@@ -17,9 +17,10 @@ PCOBJS     = $(addsuffix p,  $(COBJS))
 DCOBJS     = $(addsuffix d,  $(COBJS))
 RCOBJS     = $(addsuffix r,  $(COBJS))
 
+GIT_VERSION := "$(shell git describe --abbrev=8 --dirty --always --tags)"
 
 CXX       ?= g++
-CFLAGS    ?= -Wall -Wno-parentheses -std=c++11
+CFLAGS    ?= -Wall -Wno-parentheses -std=c++11 -DVERSION=\"$(GIT_VERSION)\"
 LFLAGS    ?= -Wall
 
 COPTIMIZE ?= -O3

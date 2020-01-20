@@ -101,6 +101,7 @@ int main(int argc, char** argv)
         IntOption    cpu_lim("MAIN", "cpu-lim","Limit on CPU time allowed in seconds.\n", INT32_MAX, IntRange(0, INT32_MAX));
         IntOption    mem_lim("MAIN", "mem-lim","Limit on memory usage in megabytes.\n", INT32_MAX, IntRange(0, INT32_MAX));
         BoolOption   drup   ("MAIN", "drup",   "Generate DRUP UNSAT proof.", false);
+        BoolOption   show_soln   ("MAIN", "show-soln",   "Show solution.", false);
         StringOption drup_file("MAIN", "drup-file", "DRUP UNSAT proof ouput file.", "");
 
         parseOptions(argc, argv, true);
@@ -156,6 +157,7 @@ int main(int argc, char** argv)
             printf("c ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
         
         if (S.verbosity > 0){
+            printf("c | Git Version : %s \n",VERSION);
             printf("c ============================[ Problem Statistics ]=============================\n");
             printf("c |                                                                             |\n"); }
         
@@ -216,9 +218,14 @@ int main(int argc, char** argv)
         
         if (S.verbosity > 0){
             printStats(S);
+            if (ret == l_True) {
+                in = (argc == 1) ? gzdopen(0, "rb") : gzopen(argv[1], "rb");
+                check_solution_DIMACS(in, S);
+                gzclose(in);
+            }
             printf("\n"); }
         printf(ret == l_True ? "s SATISFIABLE\n" : ret == l_False ? "s UNSATISFIABLE\n" : "s UNKNOWN\n");
-        if (ret == l_True){
+        if (ret == l_True && show_soln){
             printf("v ");
             for (int i = 0; i < S.nVars(); i++)
                 if (S.model[i] != l_Undef)
