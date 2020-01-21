@@ -183,7 +183,9 @@ public:
     double    step_size_dec;
     double    min_step_size;
     int       timer;
+    int       timer_lit;
     double    var_decay;
+    double    lit_decay;
     double    clause_decay;
     double    random_var_freq;
     double    random_seed;
@@ -203,6 +205,7 @@ public:
     double    learntsize_adjust_inc;
 
     double lsids_pick;
+    double lsids_erase_bump_weight;
 
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
