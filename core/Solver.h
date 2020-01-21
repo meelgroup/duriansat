@@ -529,7 +529,7 @@ inline void Solver::varDecayActivity() {
     var_inc *= (1 / var_decay); }
 
 inline void Solver::litDecayActivity() {
-    lit_inc *= (1 / var_decay); }
+    lit_inc *= (1 / lit_decay); }
 
 inline void Solver::varBumpActivity(Var v, double mult) {
     if ( (activity_VSIDS[v] += var_inc * mult) > 1e100 ) {
