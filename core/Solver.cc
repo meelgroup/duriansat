@@ -75,6 +75,7 @@ static IntOption     opt_min_dupl_app      ("DUP-LEARNTS", "min-dup-app",  "spec
 static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "specifies the initial maximal duplicates DB size.", 500000, IntRange(1, INT32_MAX));
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
+static DoubleOption opt_dec_lit_ph         ("LSIDS", "dec-lit-phase", "Keep a decaying score for literal polarity to pick polarity.", 0.0, DoubleRange(0, true, 1, true));
 
 //VSIDS_props_limit
 
@@ -119,7 +120,7 @@ Solver::Solver() :
   //
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
-
+  , decay_pol       (opt_dec_lit_ph)
   // Statistics: (formerly in 'SolverStats')
   //
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
@@ -945,6 +946,7 @@ Var Solver::newVar(bool sign, bool dvar)
     seen     .push(0);
     seen2    .push(0);
     polarity .push(sign);
+    lit_dec_pol.push(sign ? 1.0 : -1.0);
     decision .push();
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);
@@ -1111,8 +1113,11 @@ void Solver::cancelUntil(int bLevel) {
 #ifdef PRINT_OUT
 				std::cout << "undo " << x << "\n";
 #endif				
-	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last())
+	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
+                    lit_dec_pol[x] *= decay_pol;
+                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0);
+                }
 				insertVarOrder(x);
 			}
         }
@@ -1135,6 +1140,7 @@ void Solver::cancelUntil(int bLevel) {
 Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
+    Lit lit = lit_Undef;
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
 
@@ -1167,7 +1173,16 @@ Lit Solver::pickBranchLit()
             next = order_heap.removeMin();
         }
 
-    return mkLit(next, polarity[next]);
+    if(decay_pol > 0){
+        if ( lit_dec_pol[next] > 0 ) {
+            lit = mkLit(next, true);
+        } else {
+            lit = mkLit(next, false);
+        }
+        return lit;
+    } else {
+        return mkLit(next, polarity[next]);
+    }
 }
 
 inline Solver::ConflictData Solver::FindConflictLevel(CRef cind)

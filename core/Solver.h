@@ -202,7 +202,7 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
-
+    double    decay_pol;
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
     uint32_t       min_number_of_learnts_copies;    
@@ -282,6 +282,7 @@ protected:
     double              cla_inc;          // Amount to bump next clause with.
     vec<double>         activity_CHB,     // A heuristic measurement of the activity of a variable.
     activity_VSIDS,activity_distance;
+    vec<double>         lit_dec_pol; // literal decaying polarity
     double              var_inc;          // Amount to bump next variable with.
     OccLists<Lit, vec<Watcher>, WatcherDeleted>
     watches_bin,      // Watches for binary clauses only.
