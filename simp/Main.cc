@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 {
     try {
         setUsageHelp("USAGE: %s [options] <input-file> <result-output-file>\n\n  where input may be either in plain or gzipped DIMACS.\n");
-        printf("c This is MapleLCMDistChronoBT-DL.\n");
+        printf("c This is MapleLCMDistChronoBT-DL with decaying polarity.\n");
         
 #if defined(__linux__)
         fpu_control_t oldcw, newcw;
