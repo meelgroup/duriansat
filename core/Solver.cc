@@ -1190,11 +1190,12 @@ Lit Solver::pickBranchLit()
         ++decisions_ncbt;
     }
 
-    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
+    /*long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
     diff_ratio = activity_diff /
         std::max(activity_lit[2*next], activity_lit[2*next+1]);
+    */
 
-    if (diff_ratio < lsids_pick) {
+    if (CBT) {
         lit = pickLsidsBasedPhase(next);
         return lit;
     }  else {
