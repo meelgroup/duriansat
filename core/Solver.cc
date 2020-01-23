@@ -76,6 +76,10 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
+static const char* cat2 = "LSIDS";
+
+static DoubleOption  opt_lsids_phase       (cat2, "lsids-pick", "Use LSIDS for phase selection. p : when diff between the literal activity is p high then choose LSIDS, else polarity caching.", 0.5, DoubleRange(0, true, 1, true));
+static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -92,7 +96,9 @@ Solver::Solver() :
   , step_size_dec    (opt_step_size_dec)
   , min_step_size    (opt_min_step_size)
   , timer            (5000)
+  , timer_lit        (5000)
   , var_decay        (opt_var_decay)
+  , lit_decay        (opt_var_decay)
   , clause_decay     (opt_clause_decay)
   , random_var_freq  (opt_random_var_freq)
   , random_seed      (opt_random_seed)
@@ -120,6 +126,8 @@ Solver::Solver() :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
 
+  , lsids_pick(opt_lsids_phase)
+  , lsids_erase_bump_weight(opt_lsids_erase_weight)
   // Statistics: (formerly in 'SolverStats')
   //
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
@@ -130,6 +138,7 @@ Solver::Solver() :
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
+  , lit_inc            (1)
   , watches_bin        (WatcherDeleted(ca))
   , watches            (WatcherDeleted(ca))
   , qhead              (0)
@@ -935,6 +944,9 @@ Var Solver::newVar(bool sign, bool dvar)
     vardata  .push(mkVarData(CRef_Undef, 0));
     activity_CHB  .push(0);
     activity_VSIDS.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
+    activity_lit.push(0);
+    activity_lit.push(0);
+
 
     picked.push(0);
     conflicted.push(0);
@@ -1112,8 +1124,10 @@ void Solver::cancelUntil(int bLevel) {
 #ifdef PRINT_OUT
 				std::cout << "undo " << x << "\n";
 #endif				
-	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last())
+	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
+                    litBumpActivity(mkLit(x,!polarity[x]),lsids_erase_bump_weight);
+                 }
 				insertVarOrder(x);
 			}
         }
@@ -1136,6 +1150,9 @@ void Solver::cancelUntil(int bLevel) {
 Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
+    Lit lit = lit_Undef;
+    float diff_ratio = 1;
+
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
 
@@ -1173,7 +1190,17 @@ Lit Solver::pickBranchLit()
         ++decisions_ncbt;
     }
 
-    return mkLit(next, polarity[next]);
+    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
+    diff_ratio = activity_diff /
+        std::max(activity_lit[2*next], activity_lit[2*next+1]);
+
+    if (diff_ratio < lsids_pick) {
+        lit = pickLsidsBasedPhase(next);
+        return lit;
+    }  else {
+        return mkLit(next, polarity[next]);
+    }
+
 }
 
 inline Solver::ConflictData Solver::FindConflictLevel(CRef cind)
@@ -1287,7 +1314,8 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
             if (!seen[var(q)] && level(var(q)) > 0){
                 if (VSIDS){
                     varBumpActivity(var(q), .5);
-                    add_tmp.push(q);
+                    litBumpActivity(~q, .5);
+                    //add_tmp.push(q);
                 }else
                     conflicted[var(q)]++;
                 seen[var(q)] = 1;
@@ -1372,9 +1400,18 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
             Var v = var(add_tmp[i]);
             if (level(v) >= out_btlevel - 1)
                 varBumpActivity(v, 1);
+                litBumpActivity(~add_tmp[i], 1);
         }
         add_tmp.clear();
     }else{
+        for (int i = 0; i < add_tmp.size(); i++) {
+            Var v = var(add_tmp[i]);
+            if (level(v) >= out_btlevel - 1){
+                litBumpActivity(~add_tmp[i], 1);
+            }
+        }
+        add_tmp.clear();
+
         seen[var(p)] = true;
         for(int i = out_learnt.size() - 1; i >= 0; i--){
             Var v = var(out_learnt[i]);
@@ -1944,6 +1981,8 @@ lbool Solver::search(int& nof_conflicts)
 
         if (confl != CRef_Undef){
             // CONFLICT
+            if (--timer_lit == 0 && lit_decay < 0.95)
+                timer_lit = 5000, lit_decay += 0.01;
             if (VSIDS){
                 if (--timer == 0 && var_decay < 0.95) timer = 5000, var_decay += 0.01;
             }else
@@ -2037,6 +2076,7 @@ lbool Solver::search(int& nof_conflicts)
             }
 
             if (VSIDS) varDecayActivity();
+            litDecayActivity();
             claDecayActivity();
 
             /*if (--learntsize_adjust_cnt == 0){

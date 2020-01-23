@@ -183,7 +183,9 @@ public:
     double    step_size_dec;
     double    min_step_size;
     int       timer;
+    int       timer_lit;
     double    var_decay;
+    double    lit_decay;
     double    clause_decay;
     double    random_var_freq;
     double    random_seed;
@@ -202,6 +204,8 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
+    double lsids_pick;
+    double lsids_erase_bump_weight;
 
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
@@ -284,7 +288,9 @@ protected:
     double              cla_inc;          // Amount to bump next clause with.
     vec<double>         activity_CHB,     // A heuristic measurement of the activity of a variable.
     activity_VSIDS,activity_distance;
+    vec<double>         activity_lit;
     double              var_inc;          // Amount to bump next variable with.
+    double              lit_inc;
     OccLists<Lit, vec<Watcher>, WatcherDeleted>
     watches_bin,      // Watches for binary clauses only.
     watches;          // 'watches[lit]' is a list of constraints watching 'lit' (will go there if literal becomes true).
@@ -365,10 +371,14 @@ protected:
 
     // Maintaining Variable/Clause activity:
     //
+    void     litDecayActivity ();
     void     varDecayActivity ();                      // Decay all variables with the specified factor. Implemented by increasing the 'bump' value instead.
     void     varBumpActivity  (Var v, double mult);    // Increase a variable with the current 'bump' value.
+    void     litBumpActivity  (Lit l, double mult);
     void     claDecayActivity ();                      // Decay all clauses with the specified factor. Implemented by increasing the 'bump' value instead.
     void     claBumpActivity  (Clause& c);             // Increase a clause with the current 'bump' value.
+    Lit      pickLsidsBasedPhase(Var v);
+
 
     // Operations on clauses:
     //
@@ -520,6 +530,9 @@ inline void Solver::insertVarOrder(Var x) {
 inline void Solver::varDecayActivity() {
     var_inc *= (1 / var_decay); }
 
+inline void Solver::litDecayActivity() {
+    lit_inc *= (1 / lit_decay); }
+
 inline void Solver::varBumpActivity(Var v, double mult) {
     if ( (activity_VSIDS[v] += var_inc * mult) > 1e100 ) {
         // Rescale:
@@ -529,6 +542,27 @@ inline void Solver::varBumpActivity(Var v, double mult) {
 
     // Update order_heap with respect to new activity:
     if (order_heap_VSIDS.inHeap(v)) order_heap_VSIDS.decrease(v); }
+
+
+inline void Solver::litBumpActivity(Lit l, double mult) {
+    if ((activity_lit[l.x] += lit_inc * mult) > 1e100) {
+        // Rescale:
+        for (int i = 0; i < 2 * nVars(); i++)
+            activity_lit[i] *= 1e-100;
+        lit_inc *= 1e-100;
+    }
+}
+
+inline Lit Solver:: pickLsidsBasedPhase(Var v){
+    Lit pos_lit = mkLit(v,true);
+    Lit neg_lit = mkLit(v,false);
+    if ( activity_lit[pos_lit.x] > activity_lit[neg_lit.x] ) {
+        return pos_lit;
+    } else {
+        return neg_lit;
+    }
+}
+
 
 inline void Solver::claDecayActivity() { cla_inc *= (1 / clause_decay); }
 inline void Solver::claBumpActivity (Clause& c) {
