@@ -230,6 +230,9 @@ int main(int argc, char** argv)
             for (int i = 0; i < S.nVars(); i++)
                 if (S.model[i] != l_Undef)
                     printf("%s%s%d", (i==0)?"":" ", (S.model[i]==l_True)?"":"-", i+1);
+                else
+                    printf("c WARNING! Unsat Var.\n");
+
             printf(" 0\n");
         }
 

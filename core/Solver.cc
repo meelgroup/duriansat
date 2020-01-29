@@ -1152,7 +1152,6 @@ Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
     Lit lit = lit_Undef;
-    float diff_ratio = 1;
 
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
@@ -1164,34 +1163,40 @@ Lit Solver::pickBranchLit()
             rnd_decisions++; }*/
 
     // Activity based decision:
-    rebuildOrderHeap();         // this is needed to be away
-    while (next == var_Undef || value(next) != l_Undef || !decision[next])
-        if (order_heap.empty())
-            return lit_Undef;
-        else{
-#ifdef ANTI_EXPLORATION
-            if (!VSIDS){
-                Var v = order_heap_CHB[0];
-                uint32_t age = conflicts - canceled[v];
-                while (age > 0){
-                    double decay = pow(0.95, age);
-                    activity_CHB[v] *= decay;
-                    if (order_heap_CHB.inHeap(v))
-                        order_heap_CHB.increase(v);
-                    canceled[v] = conflicts;
-                    v = order_heap_CHB[0];
-                    age = conflicts - canceled[v];
-                }
-            }
-#endif
-            next = order_heap.removeMin();
+    while (next == var_Undef || value(next) != l_Undef || !decision[next]){
 
-            if (VSIDS) {
+        if(VSIDS){
+            if (order_heap_lit.empty())
+                return lit_Undef;
+            else {
                 lit.x = order_heap_lit.removeMin() ;
                 next = var(lit);
             }
+        } else {
 
+
+            if (order_heap.empty())
+                return lit_Undef;
+            else{
+    #ifdef ANTI_EXPLORATION
+                if (!VSIDS){
+                    Var v = order_heap_CHB[0];
+                    uint32_t age = conflicts - canceled[v];
+                    while (age > 0){
+                        double decay = pow(0.95, age);
+                        activity_CHB[v] *= decay;
+                        if (order_heap_CHB.inHeap(v))
+                            order_heap_CHB.increase(v);
+                        canceled[v] = conflicts;
+                        v = order_heap_CHB[0];
+                        age = conflicts - canceled[v];
+                    }
+                }
+    #endif
+                next = order_heap.removeMin();
+            }
         }
+    }
 
 
 
