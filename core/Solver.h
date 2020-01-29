@@ -264,6 +264,13 @@ protected:
         bool operator () (Var x, Var y) const { return activity[x] > activity[y]; }
         VarOrderLt(const vec<double>&  act) : activity(act) { }
     };
+
+
+    struct LitOrderLt {
+        const vec<double>&  activity;
+        bool operator () (int x, int y) const { return activity[x] > activity[y]; }
+        LitOrderLt(const vec<double>&  act) : activity(act) { }
+    };
     
     struct ConflictData
 	{
@@ -304,6 +311,7 @@ protected:
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
     Heap<VarOrderLt>    order_heap_CHB,   // A priority queue of variables ordered with respect to the variable activity.
     order_heap_VSIDS,order_heap_distance;
+    Heap<LitOrderLt>    order_heap_lit;
     double              progress_estimate;// Set by 'search()'.
     bool                remove_satisfied; // Indicates whether possibly inefficient linear scan for satisfied clauses should be performed in 'simplify'.
 
@@ -523,7 +531,16 @@ inline int  Solver::level (Var x) const { return vardata[x].level; }
 inline void Solver::insertVarOrder(Var x) {
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
-    if (!order_heap.inHeap(x) && decision[x]) order_heap.insert(x); }
+    if (!order_heap.inHeap(x) && decision[x]) order_heap.insert(x);
+    if(VSIDS){
+        Lit l = mkLit(x, polarity[x]);
+        Lit ln = mkLit(x, !polarity[x]);
+        if(!order_heap_lit.inHeap(l.x) && decision[x]){
+            order_heap_lit.insert(l.x);
+        }
+    }
+
+}
 
 inline void Solver::varDecayActivity() {
     var_inc *= (1 / var_decay); }
@@ -549,6 +566,11 @@ inline void Solver::litBumpActivity(Lit l, double mult) {
             activity_lit[i] *= 1e-100;
         lit_inc *= 1e-100;
     }
+
+    if (order_heap_lit.inHeap(l.x)) {
+        order_heap_lit.decrease(l.x);
+    }
+
 }
 
 inline Lit Solver:: pickLsidsBasedPhase(Var v){
@@ -610,6 +632,10 @@ inline void     Solver::setDecisionVar(Var v, bool b)
         order_heap_CHB.insert(v);
         order_heap_VSIDS.insert(v);
         order_heap_distance.insert(v);}
+    if (b && !order_heap_lit.inHeap(2*v)) order_heap_lit.insert(2*v);
+    if (b && !order_heap_lit.inHeap(2*v+1)) order_heap_lit.insert(2*v+1);
+
+
 }
 inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }
 inline void     Solver::setPropBudget(int64_t x){ propagation_budget = propagations + x; }

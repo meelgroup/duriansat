@@ -145,6 +145,7 @@ Solver::Solver() :
   , simpDB_props       (0)
   , order_heap_CHB     (VarOrderLt(activity_CHB))
   , order_heap_VSIDS   (VarOrderLt(activity_VSIDS))
+  , order_heap_lit     (LitOrderLt(activity_lit))
   , progress_estimate  (0)
   , remove_satisfied   (true)
 
@@ -1128,6 +1129,7 @@ void Solver::cancelUntil(int bLevel) {
                     litBumpActivity(mkLit(x,!polarity[x]),lsids_erase_bump_weight);
                  }
 				insertVarOrder(x);
+
 			}
         }
         qhead = trail_lim[bLevel];
@@ -1162,6 +1164,7 @@ Lit Solver::pickBranchLit()
             rnd_decisions++; }*/
 
     // Activity based decision:
+    rebuildOrderHeap();         // this is needed to be away
     while (next == var_Undef || value(next) != l_Undef || !decision[next])
         if (order_heap.empty())
             return lit_Undef;
@@ -1182,18 +1185,21 @@ Lit Solver::pickBranchLit()
             }
 #endif
             next = order_heap.removeMin();
+
+            if (VSIDS) {
+                lit.x = order_heap_lit.removeMin() ;
+                next = var(lit);
+            }
+
         }
 
-    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
-    diff_ratio = activity_diff /
-        std::max(activity_lit[2*next], activity_lit[2*next+1]);
 
-    if (diff_ratio < lsids_pick) {
-        lit = pickLsidsBasedPhase(next);
+
+    if (VSIDS)
         return lit;
-    }  else {
+    else
         return mkLit(next, polarity[next]);
-    }
+
 
 }
 
@@ -1773,13 +1779,18 @@ void Solver::safeRemoveSatisfied(vec<CRef>& cs, unsigned valid_mark)
 void Solver::rebuildOrderHeap()
 {
     vec<Var> vs;
+    vec<int> ls;
     for (Var v = 0; v < nVars(); v++)
-        if (decision[v] && value(v) == l_Undef)
+        if (decision[v] && value(v) == l_Undef){
             vs.push(v);
+            ls.push(2*v);
+            ls.push(2*v+1);
+        }
 
     order_heap_CHB  .build(vs);
     order_heap_VSIDS.build(vs);
     order_heap_distance.build(vs);
+    order_heap_lit.build(ls) ;
 }
 
 
