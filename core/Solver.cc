@@ -1075,8 +1075,10 @@ bool Solver::satisfied(const Clause& c) const {
 // Revert to the state at given level (keeping all assignment at 'level' but not beyond).
 //
 void Solver::cancelUntil(int bLevel) {
-	
+	int trail_length = 0;
     if (decisionLevel() > bLevel){
+        trail_length = decisionLevel() - bLevel;
+        assert(trail_length > 0);
 #ifdef PRINT_OUT
 		std::cout << "bt " << bLevel << "\n";
 #endif				
@@ -1116,7 +1118,7 @@ void Solver::cancelUntil(int bLevel) {
 	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
                     lit_dec_pol[x] *= decay_pol;
-                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0);
+                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0)*trail_length ;
                 }
 				insertVarOrder(x);
 			}
