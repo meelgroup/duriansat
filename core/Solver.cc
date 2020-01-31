@@ -126,7 +126,8 @@ Solver::Solver() :
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
   , dec_vars(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
   , chrono_backtrack(0), non_chrono_backtrack(0)
-
+  , decisions_cbt(0), decisions_ncbt(0)
+  , CBT(false)
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
@@ -936,6 +937,7 @@ Var Solver::newVar(bool sign, bool dvar)
     activity_CHB  .push(0);
     activity_VSIDS.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
 
+
     picked.push(0);
     conflicted.push(0);
     almost_conflicted.push(0);
@@ -1143,6 +1145,8 @@ Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
     Lit lit = lit_Undef;
+    float diff_ratio = 1;
+
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
 
@@ -1174,8 +1178,19 @@ Lit Solver::pickBranchLit()
 #endif
             next = order_heap.removeMin();
         }
+    if(CBT){
+        ++decisions_cbt;
+    } else {
+        ++decisions_ncbt;
+    }
 
-    if(decay_pol > 0){
+    /*
+    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
+    diff_ratio = activity_diff /
+        std::max(activity_lit[2*next], activity_lit[2*next+1]);
+    */
+
+    if(CBT){
         if ( lit_dec_pol[next] > 0 ) {
             lit = mkLit(next, true);
         } else {
@@ -1981,11 +1996,13 @@ lbool Solver::search(int& nof_conflicts)
             if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
             {
 				++chrono_backtrack;
+                CBT = true;
 				cancelUntil(data.nHighestLevel -1);
 			}
 			else // default behavior
 			{
 				++non_chrono_backtrack;
+                CBT = false;
 				cancelUntil(backtrack_level);
 			}
 
