@@ -91,6 +91,7 @@ int main(int argc, char** argv)
         IntOption    verb   ("MAIN", "verb",   "Verbosity level (0=silent, 1=some, 2=more).", 1, IntRange(0, 2));
         IntOption    cpu_lim("MAIN", "cpu-lim","Limit on CPU time allowed in seconds.\n", INT32_MAX, IntRange(0, INT32_MAX));
         IntOption    mem_lim("MAIN", "mem-lim","Limit on memory usage in megabytes.\n", INT32_MAX, IntRange(0, INT32_MAX));
+        BoolOption   show_soln   ("MAIN", "show-soln",   "Show solution.", false);
         
         parseOptions(argc, argv, true);
 
@@ -134,6 +135,7 @@ int main(int argc, char** argv)
             printf("c ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
         
         if (S.verbosity > 0){
+            printf("c | Git Version : %s \n",VERSION);
             printf("c ============================[ Problem Statistics ]=============================\n");
             printf("c |                                                                             |\n"); }
         
@@ -177,7 +179,7 @@ int main(int argc, char** argv)
             }
             printf("\n"); }
         printf(ret == l_True ? "s SATISFIABLE\n" : ret == l_False ? "s UNSATISFIABLE\n" : "s UNKNOWN\n");
-        if (ret == l_True){
+        if (ret == l_True && show_soln ){
             printf("v ");
             for (int i = 0; i < S.nVars(); i++)
                 if (S.model[i] != l_Undef)
