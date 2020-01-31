@@ -1120,7 +1120,7 @@ void Solver::cancelUntil(int bLevel) {
 	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
                     lit_dec_pol[x] *= decay_pol;
-                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0)*trail_length ;
+                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0) ;
                 }
 				insertVarOrder(x);
 			}
@@ -1145,7 +1145,6 @@ Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
     Lit lit = lit_Undef;
-    float diff_ratio = 1;
 
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
@@ -1184,11 +1183,6 @@ Lit Solver::pickBranchLit()
         ++decisions_ncbt;
     }
 
-    /*
-    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
-    diff_ratio = activity_diff /
-        std::max(activity_lit[2*next], activity_lit[2*next+1]);
-    */
 
     if(CBT){
         if ( lit_dec_pol[next] > 0 ) {
