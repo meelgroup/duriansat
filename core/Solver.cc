@@ -1126,7 +1126,7 @@ void Solver::cancelUntil(int bLevel) {
 #endif				
 	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
-                    litBumpActivity(mkLit(x,!polarity[x]),lsids_erase_bump_weight);
+                    litBumpActivity(mkLit(x,polarity[x]),lsids_erase_bump_weight);
                  }
 				insertVarOrder(x);
 			}
@@ -1402,14 +1402,14 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
             Var v = var(add_tmp[i]);
             if (level(v) >= out_btlevel - 1)
                 varBumpActivity(v, 1);
-                litBumpActivity(~add_tmp[i], 1);
+                litBumpActivity(add_tmp[i], 1);
         }
         add_tmp.clear();
     }else{
         for (int i = 0; i < add_tmp.size(); i++) {
             Var v = var(add_tmp[i]);
             if (level(v) >= out_btlevel - 1){
-                litBumpActivity(~add_tmp[i], 1);
+                litBumpActivity(add_tmp[i], 1);
             }
         }
         add_tmp.clear();
