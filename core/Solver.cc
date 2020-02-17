@@ -76,6 +76,8 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
+static IntOption     opt_chrono_bt_pol     ("Polarity", "chrono-bt-pol",  "specify the polarity to use during Chronological backtrack 0 : use same  1 : use opposite to phase saving 2 : always false 3 : random ", 1, IntRange(0,3));
+
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -110,6 +112,7 @@ Solver::Solver() :
   , max_lbd_dup(opt_max_lbd_dup)
   , dupl_db_init_size(opt_dupl_db_init_size)
   , VSIDS_props_limit(opt_VSIDS_props_limit*1000000)
+  , chrono_bt_pol(opt_chrono_bt_pol)
 
   // Parameters (the rest):
   //
@@ -1167,8 +1170,15 @@ Lit Solver::pickBranchLit()
 #endif
             next = order_heap.removeMin();
         }
+    Lit l;
     if(CBT){
         ++decisions_cbt;
+        if(chrono_bt_pol == 1)
+            return mkLit(next, !polarity[next]);
+        if(chrono_bt_pol == 2)
+            return mkLit(next, false);
+        if(chrono_bt_pol == 3)
+            return mkLit(next, (bool)(rand()%2));
     } else {
         ++decisions_ncbt;
     }

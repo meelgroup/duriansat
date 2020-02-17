@@ -208,6 +208,7 @@ public:
     uint32_t       min_number_of_learnts_copies;    
     uint32_t       dupl_db_init_size;
     uint32_t       max_lbd_dup;
+    uint32_t       chrono_bt_pol;
     std::chrono::microseconds duptime;
     // duplicate learnts version
 
