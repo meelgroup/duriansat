@@ -204,7 +204,10 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
-    double lsids_pick;
+    int lsids_pol;
+    int litbump_reason;
+    int litbump_conflict;
+    int litbump_deletion;
     double lsids_erase_bump_weight;
 
     // duplicate learnts version
@@ -472,6 +475,18 @@ protected:
     // Returns a random integer 0 <= x < size. Seed must never be 0.
     static inline int irand(double& seed, int size) {
         return (int)(drand(seed) * size); }
+
+    inline bool    use_lsids(){
+        if (lsids_pol == 0)
+            return false;
+        else if (lsids_pol == 2)
+            return true;
+        else if (CBT){
+            assert (lsids_pol == 1);
+            return true;}
+        else
+            return false;
+    }
 
 
     // simplify

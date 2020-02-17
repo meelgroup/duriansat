@@ -78,7 +78,10 @@ static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specif
 
 static const char* cat2 = "LSIDS";
 
-static DoubleOption  opt_lsids_phase       (cat2, "lsids-pick", "Use LSIDS for phase selection. p : when diff between the literal activity is p high then choose LSIDS, else polarity caching.", 0.5, DoubleRange(0, true, 1, true));
+static IntOption  opt_lsids_phase       (cat2, "lsids-phase", "Use LSIDS for phase selection. 0 : never 1 : only during chrono BT 2 : always", 1, IntRange(0, 2));
+static IntOption  opt_litbump_reason       (cat2, "litbump-reason", "Which literal to bump of reason literals. -1 : negation 0 : dont bump 1 : same", 1, IntRange(-1, 1));
+static IntOption  opt_litbump_learnt       (cat2, "litbump-learnt", "Which literal to bump of conflict clause literals. -1 : negation 0 : dont bump 1 : same", 1, IntRange(-1, 1));
+static IntOption  opt_litbump_deletion       (cat2, "litbump-delete", "Which literal to bump of deleted assignment literals. -1 : negation 0 : dont bump 1 : same", 1, IntRange(-1, 1));
 static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
 //VSIDS_props_limit
 
@@ -126,7 +129,10 @@ Solver::Solver() :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
 
-  , lsids_pick(opt_lsids_phase)
+  , lsids_pol(opt_lsids_phase)
+  , litbump_reason(opt_litbump_reason)
+  , litbump_conflict(opt_litbump_learnt)
+  , litbump_deletion(opt_litbump_deletion)
   , lsids_erase_bump_weight(opt_lsids_erase_weight)
   // Statistics: (formerly in 'SolverStats')
   //
@@ -1126,7 +1132,16 @@ void Solver::cancelUntil(int bLevel) {
 #endif				
 	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
-                    litBumpActivity(mkLit(x,!polarity[x]),lsids_erase_bump_weight);
+                    if(litbump_deletion != 0) {
+                        bool pol;
+
+                        if(litbump_deletion > 0)
+                            pol = polarity[x];
+                        else
+                            pol = !polarity[x];
+
+                        litBumpActivity(mkLit(x,pol),lsids_erase_bump_weight);
+                    }
                  }
 				insertVarOrder(x);
 			}
@@ -1195,7 +1210,7 @@ Lit Solver::pickBranchLit()
         std::max(activity_lit[2*next], activity_lit[2*next+1]);
     */
 
-    if (CBT) {
+    if (use_lsids()) {
         lit = pickLsidsBasedPhase(next);
         return lit;
     }  else {
@@ -1315,8 +1330,13 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
             if (!seen[var(q)] && level(var(q)) > 0){
                 if (VSIDS){
                     varBumpActivity(var(q), .5);
-                    litBumpActivity(~q, .5);
-                    //add_tmp.push(q);
+                    if(litbump_conflict != 0) {
+                        if(litbump_conflict > 0)
+                            litBumpActivity(q, .5);
+                        else
+                            litBumpActivity(~q, .5);
+                    }
+                    add_tmp.push(q);
                 }else
                     conflicted[var(q)]++;
                 seen[var(q)] = 1;
@@ -1401,7 +1421,12 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
             Var v = var(add_tmp[i]);
             if (level(v) >= out_btlevel - 1)
                 varBumpActivity(v, 1);
-                litBumpActivity(~add_tmp[i], 1);
+                if(litbump_reason != 0) {
+                    if(litbump_reason < 0)
+                        litBumpActivity(~add_tmp[i], 1);
+                    else
+                        litBumpActivity(add_tmp[i], 1);
+                }
         }
         add_tmp.clear();
     }else{
