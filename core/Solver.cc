@@ -1419,7 +1419,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
     if (VSIDS){
         for (int i = 0; i < add_tmp.size(); i++){
             Var v = var(add_tmp[i]);
-            if (level(v) >= out_btlevel - 1)
+            if (level(v) >= out_btlevel - 1){
                 varBumpActivity(v, 1);
                 if(litbump_reason != 0) {
                     if(litbump_reason < 0)
@@ -1427,13 +1427,19 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
                     else
                         litBumpActivity(add_tmp[i], 1);
                 }
+            }
         }
         add_tmp.clear();
     }else{
         for (int i = 0; i < add_tmp.size(); i++) {
             Var v = var(add_tmp[i]);
             if (level(v) >= out_btlevel - 1){
-                litBumpActivity(~add_tmp[i], 1);
+                if(litbump_reason != 0) {
+                    if(litbump_reason < 0)
+                        litBumpActivity(~add_tmp[i], 1);
+                    else
+                        litBumpActivity(add_tmp[i], 1);
+                }
             }
         }
         add_tmp.clear();
