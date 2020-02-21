@@ -59,6 +59,7 @@ void printStats(Solver& solver)
     printf("c conflict literals     : %-12"PRIu64"   (%4.2f %% deleted)\n", solver.tot_literals, (solver.max_literals - solver.tot_literals)*100 / (double)solver.max_literals);
     printf("c backtracks            : %-12"PRIu64"   (NCB %0.f%% , CB %0.f%%)\n", solver.non_chrono_backtrack + solver.chrono_backtrack, (solver.non_chrono_backtrack * 100) / (double)(solver.non_chrono_backtrack + solver.chrono_backtrack), (solver.chrono_backtrack * 100) / (double)(solver.non_chrono_backtrack + solver.chrono_backtrack));
     printf("c decisions             : %-12"PRIu64"   (NCB %0.f%% , CB %0.f%%)\n", solver.decisions_cbt + solver.decisions_ncbt, (solver.decisions_ncbt * 100) / (double)(solver.decisions_cbt + solver.decisions_ncbt), (solver.decisions_cbt * 100) / (double)(solver.decisions_cbt + solver.decisions_ncbt));
+    printf("c decisions - decay pol : %-12"PRIu64"   (same %0.f%% , diff %0.f%%)\n", solver.same_decision_dec + solver.diff_decision_dec, (solver.same_decision_dec * 100) / (double)(solver.same_decision_dec + solver.diff_decision_dec), (solver.diff_decision_dec * 100) / (double)(solver.same_decision_dec + solver.diff_decision_dec));
     if (mem_used != 0) printf("c Memory used           : %.2f MB\n", mem_used);
     printf("c CPU time              : %g s\n", cpu_time);
 }

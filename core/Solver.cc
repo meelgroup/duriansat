@@ -75,7 +75,9 @@ static IntOption     opt_min_dupl_app      ("DUP-LEARNTS", "min-dup-app",  "spec
 static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "specifies the initial maximal duplicates DB size.", 500000, IntRange(1, INT32_MAX));
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
-static DoubleOption opt_dec_lit_ph         ("LSIDS", "dec-lit-phase", "Keep a decaying score for literal polarity to pick polarity.", 0.0, DoubleRange(0, true, 1, true));
+static DoubleOption opt_dec_lit_ph         ("LitScore", "dec-lit-phase", "Keep a decaying score for literal polarity to pick polarity.", 0.5, DoubleRange(0, true, 1, true));
+
+static IntOption     opt_when_dec_lit ("LitScore", "dec-lit",  "When to use decaying literals score? 0 : never 1 : during chrono-bt 2 : always", 0, IntRange(0, 2));
 
 //VSIDS_props_limit
 
@@ -121,12 +123,15 @@ Solver::Solver() :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
   , decay_pol       (opt_dec_lit_ph)
+  , use_decay_pol   (opt_when_dec_lit)
+
   // Statistics: (formerly in 'SolverStats')
   //
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
   , dec_vars(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
   , chrono_backtrack(0), non_chrono_backtrack(0)
   , decisions_cbt(0), decisions_ncbt(0)
+  , same_decision_dec(0), diff_decision_dec(0)
   , CBT(false)
   , ok                 (true)
   , cla_inc            (1)
@@ -1181,7 +1186,17 @@ Lit Solver::pickBranchLit()
         ++decisions_ncbt;
     }
 
-    if(decay_pol > 0){
+
+
+    if(use_decay_pol_score()){
+        if(lit_dec_pol[next] > 0 && polarity[next] ){
+            ++same_decision_dec;
+        } else if (lit_dec_pol[next] < 0 && !polarity[next] ) {
+            ++same_decision_dec;
+        } else {
+            ++diff_decision_dec;
+        }
+
         if ( lit_dec_pol[next] > 0 ) {
             lit = mkLit(next, true);
         } else {

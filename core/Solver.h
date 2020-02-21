@@ -203,6 +203,7 @@ public:
     double    learntsize_adjust_inc;
 
     double    decay_pol;
+    int       use_decay_pol;
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
     uint32_t       min_number_of_learnts_copies;    
@@ -217,6 +218,7 @@ public:
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
     uint64_t chrono_backtrack, non_chrono_backtrack;
     uint64_t decisions_cbt, decisions_ncbt;
+    uint64_t same_decision_dec, diff_decision_dec;
     bool     CBT;
 
 
@@ -464,6 +466,14 @@ protected:
     static inline int irand(double& seed, int size) {
         return (int)(drand(seed) * size); }
 
+    inline bool use_decay_pol_score(){
+        if(use_decay_pol == 2)
+            return true;
+        else if (use_decay_pol == 1 && CBT)
+            return true;
+        else
+            return false;
+    }
 
     // simplify
     //
