@@ -76,6 +76,9 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
+static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
+
+
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -154,6 +157,9 @@ Solver::Solver() :
   , conflict_budget    (-1)
   , propagation_budget (-1)
   , asynch_interrupt   (false)
+
+  // Option to add random polarity
+  , random_polarity    (opt_random_pol)
 
   // simplfiy
   , nbSimplifyAll(0)
@@ -1166,6 +1172,13 @@ Lit Solver::pickBranchLit()
 #endif
             next = order_heap.removeMin();
         }
+
+    bool pol;
+
+    if (random_polarity){
+        pol = (bool)irand(random_seed,2);
+        return mkLit(next, pol);
+    }
 
     return mkLit(next, polarity[next]);
 }
