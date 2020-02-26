@@ -1166,7 +1166,7 @@ Lit Solver::pickBranchLit()
     // Activity based decision:
     while (next == var_Undef || value(next) != l_Undef || !decision[next]){
 
-        if(VSIDS){
+        if(VSIDS && CBT){
             if (order_heap_lit.empty())
                 return lit_Undef;
             else {
@@ -1200,8 +1200,15 @@ Lit Solver::pickBranchLit()
     }
 
 
+    if(CBT){
+        ++decisions_cbt;
+    } else {
+        ++decisions_ncbt;
+    }
 
-    if (VSIDS)
+
+
+    if (VSIDS && CBT)
         return lit;
     else
         return mkLit(next, polarity[next]);
