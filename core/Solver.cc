@@ -133,7 +133,8 @@ Solver::Solver() :
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
   , dec_vars(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
   , chrono_backtrack(0), non_chrono_backtrack(0)
-
+  , decisions_cbt(0), decisions_ncbt(0)
+  , CBT(false)
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
@@ -2019,11 +2020,13 @@ lbool Solver::search(int& nof_conflicts)
             if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
             {
 				++chrono_backtrack;
+                CBT = true;
 				cancelUntil(data.nHighestLevel -1);
 			}
 			else // default behavior
 			{
 				++non_chrono_backtrack;
+                CBT = false;
 				cancelUntil(backtrack_level);
 			}
 
