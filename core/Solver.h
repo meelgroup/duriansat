@@ -216,6 +216,8 @@ public:
     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts, conflicts_VSIDS;
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
     uint64_t chrono_backtrack, non_chrono_backtrack;
+    uint64_t decisions_cbt, decisions_ncbt;
+    bool     CBT;
 
 
     // duplicate learnts version
