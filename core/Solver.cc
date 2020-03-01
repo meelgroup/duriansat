@@ -57,7 +57,8 @@ static const char* _cat = "CORE";
 static DoubleOption  opt_step_size         (_cat, "step-size",   "Initial step size",                             0.40,     DoubleRange(0, false, 1, false));
 static DoubleOption  opt_step_size_dec     (_cat, "step-size-dec","Step size decrement",                          0.000001, DoubleRange(0, false, 1, false));
 static DoubleOption  opt_min_step_size     (_cat, "min-step-size","Minimal step size",                            0.06,     DoubleRange(0, false, 1, false));
-static DoubleOption  opt_var_decay         (_cat, "var-decay",   "The variable activity decay factor",            0.80,     DoubleRange(0, false, 1, false));
+static DoubleOption  opt_var_decay         (_cat, "var-decay",   "The variable activity decay factor",            0.50,     DoubleRange(0, false, 1, false));
+static DoubleOption  opt_cb_decay         (_cat, "cb-decay",   "The variable activity decay factor for heuristic used in CB phase only",            0.90,     DoubleRange(0, false, 1, false));
 static DoubleOption  opt_clause_decay      (_cat, "cla-decay",   "The clause activity decay factor",              0.999,    DoubleRange(0, false, 1, false));
 static DoubleOption  opt_random_var_freq   (_cat, "rnd-freq",    "The frequency with which the decision heuristic tries to choose a random variable", 0, DoubleRange(0, true, 1, true));
 static DoubleOption  opt_random_seed       (_cat, "rnd-seed",    "Used by the random variable selection",         91648253, DoubleRange(0, false, HUGE_VAL, false));
@@ -93,6 +94,7 @@ Solver::Solver() :
   , min_step_size    (opt_min_step_size)
   , timer            (5000)
   , var_decay        (opt_var_decay)
+  , cb_decay         (opt_cb_decay)
   , clause_decay     (opt_clause_decay)
   , random_var_freq  (opt_random_var_freq)
   , random_seed      (opt_random_seed)
@@ -130,6 +132,7 @@ Solver::Solver() :
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
+  , cb_inc            (1)
   , watches_bin        (WatcherDeleted(ca))
   , watches            (WatcherDeleted(ca))
   , qhead              (0)
@@ -137,6 +140,7 @@ Solver::Solver() :
   , simpDB_props       (0)
   , order_heap_CHB     (VarOrderLt(activity_CHB))
   , order_heap_VSIDS   (VarOrderLt(activity_VSIDS))
+  , order_heap_CB      (VarOrderLt(activity_CB))
   , progress_estimate  (0)
   , remove_satisfied   (true)
 
@@ -935,6 +939,7 @@ Var Solver::newVar(bool sign, bool dvar)
     vardata  .push(mkVarData(CRef_Undef, 0));
     activity_CHB  .push(0);
     activity_VSIDS.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
+    activity_CB.push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
 
     picked.push(0);
     conflicted.push(0);
@@ -1137,8 +1142,7 @@ Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
-    Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
-
+    Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:(CBT? order_heap_CB :order_heap_VSIDS ) );
     // Random decision:
     /*if (drand(random_seed) < random_var_freq && !order_heap.empty()){
         next = order_heap[irand(random_seed,order_heap.size())];
@@ -1748,6 +1752,7 @@ void Solver::rebuildOrderHeap()
 
     order_heap_CHB  .build(vs);
     order_heap_VSIDS.build(vs);
+    order_heap_CB  .build(vs);
     order_heap_distance.build(vs);
 }
 

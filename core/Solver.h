@@ -184,6 +184,7 @@ public:
     double    min_step_size;
     int       timer;
     double    var_decay;
+    double    cb_decay;
     double    clause_decay;
     double    random_var_freq;
     double    random_seed;
@@ -283,8 +284,9 @@ protected:
     learnts_local;
     double              cla_inc;          // Amount to bump next clause with.
     vec<double>         activity_CHB,     // A heuristic measurement of the activity of a variable.
-    activity_VSIDS,activity_distance;
+    activity_VSIDS,activity_distance, activity_CB;
     double              var_inc;          // Amount to bump next variable with.
+    double              cb_inc;          // Amount to bump next variable with (for heuristic in CB) .
     OccLists<Lit, vec<Watcher>, WatcherDeleted>
     watches_bin,      // Watches for binary clauses only.
     watches;          // 'watches[lit]' is a list of constraints watching 'lit' (will go there if literal becomes true).
@@ -299,7 +301,7 @@ protected:
     int64_t             simpDB_props;     // Remaining number of propagations that must be made before next execution of 'simplify()'.
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
     Heap<VarOrderLt>    order_heap_CHB,   // A priority queue of variables ordered with respect to the variable activity.
-    order_heap_VSIDS,order_heap_distance;
+    order_heap_VSIDS,order_heap_CB,order_heap_distance;
     double              progress_estimate;// Set by 'search()'.
     bool                remove_satisfied; // Indicates whether possibly inefficient linear scan for satisfied clauses should be performed in 'simplify'.
 
@@ -515,10 +517,15 @@ inline int  Solver::level (Var x) const { return vardata[x].level; }
 inline void Solver::insertVarOrder(Var x) {
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
-    if (!order_heap.inHeap(x) && decision[x]) order_heap.insert(x); }
+    if (!order_heap.inHeap(x) && decision[x]) order_heap.insert(x);
+    if (!order_heap_CB.inHeap(x) && decision[x]) order_heap_CB.insert(x);  // Is this adding some overhead?
+
+}
 
 inline void Solver::varDecayActivity() {
-    var_inc *= (1 / var_decay); }
+    var_inc *= (1 / var_decay);
+    cb_inc *= (1 / cb_decay);
+}
 
 inline void Solver::varBumpActivity(Var v, double mult) {
     if ( (activity_VSIDS[v] += var_inc * mult) > 1e100 ) {
@@ -527,8 +534,16 @@ inline void Solver::varBumpActivity(Var v, double mult) {
             activity_VSIDS[i] *= 1e-100;
         var_inc *= 1e-100; }
 
+        if ( (activity_CB[v] += cb_inc * mult) > 1e100 ) {
+        for (int i = 0; i < nVars(); i++)
+            activity_CB[i] *= 1e-100;
+        cb_inc *= 1e-100; }
+
     // Update order_heap with respect to new activity:
-    if (order_heap_VSIDS.inHeap(v)) order_heap_VSIDS.decrease(v); }
+    if (order_heap_VSIDS.inHeap(v)) order_heap_VSIDS.decrease(v);
+    if (order_heap_CB.inHeap(v)) order_heap_CB.decrease(v);
+
+}
 
 inline void Solver::claDecayActivity() { cla_inc *= (1 / clause_decay); }
 inline void Solver::claBumpActivity (Clause& c) {
@@ -576,6 +591,7 @@ inline void     Solver::setDecisionVar(Var v, bool b)
     decision[v] = b;
     if (b && !order_heap_CHB.inHeap(v)){
         order_heap_CHB.insert(v);
+        order_heap_CB.insert(v);
         order_heap_VSIDS.insert(v);
         order_heap_distance.insert(v);}
 }
