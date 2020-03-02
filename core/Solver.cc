@@ -1126,7 +1126,7 @@ void Solver::cancelUntil(int bLevel) {
 #endif				
 	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
-                    litBumpActivity(mkLit(x,!polarity[x]),lsids_erase_bump_weight);
+                    //litBumpActivity(mkLit(x,!polarity[x]),lsids_erase_bump_weight);
                  }
 				insertVarOrder(x);
 			}
