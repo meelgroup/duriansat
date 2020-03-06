@@ -77,7 +77,7 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
 static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
-
+static BoolOption    opt_lazy_prop      (_cat, "lazy-prop",    "Be Lazy in propagating", false);
 
 //VSIDS_props_limit
 
@@ -175,7 +175,7 @@ Solver::Solver() :
   , DISTANCE           (true)
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
-
+  , propagation_cutoff (1)
 {}
 
 
@@ -1152,9 +1152,10 @@ Lit Solver::pickBranchLit()
             rnd_decisions++; }*/
 
     // Activity based decision:
-    while (next == var_Undef || value(next) != l_Undef || !decision[next])
-        if (order_heap.empty())
+    while (next == var_Undef || value(next) != l_Undef || !decision[next]) {
+        if (order_heap.empty()) {
             return lit_Undef;
+        }
         else{
 #ifdef ANTI_EXPLORATION
             if (!VSIDS){
@@ -1173,6 +1174,7 @@ Lit Solver::pickBranchLit()
 #endif
             next = order_heap.removeMin();
         }
+}
     if(CBT){
         ++decisions_cbt;
     } else {
@@ -1539,6 +1541,8 @@ void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
 }
 
 
+
+
 /*_________________________________________________________________________________________________
 |
 |  propagate : [void]  ->  [Clause*]
@@ -1669,6 +1673,177 @@ ExitProp:;
     return confl;
 }
 
+// --------------------- Just Lazy Propagation things -------------------
+//
+
+bool Solver::elements_remaining_to_propagate(){
+    if(qhead < trail.size()){
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void Solver::lower_propagation_cutoff(){
+    propagation_cutoff = 0;
+};
+
+
+bool Solver::up_for_propagation(Lit l){
+    Var v = var(l);
+//     printf(" %d ",v);
+    if (v <= 0 || v >= nVars()) return true; // TODO : Why so?
+    assert(activity_VSIDS[v] >= 0);
+    if (activity_VSIDS[v] >= propagation_cutoff)
+        return true;
+    else{
+        return false;
+        printf (":o\n");
+    }
+}
+
+
+CRef Solver::lazy_propagate()
+{
+    CRef    confl     = CRef_Undef;
+    int     num_props = 0;
+    watches.cleanAll();
+    watches_bin.cleanAll();
+    lqhead = qhead;
+    while (lqhead < trail.size()){
+        Lit            p   = lit_Undef;
+        while (p == lit_Undef){
+            Lit q = trail[lqhead++];     // 'p' is enqueued fact to propagate.
+            if(up_for_propagation(q)){
+                if(lqhead == qhead + 1){
+                    qhead++;
+                } else {
+                    printf(":o qhead : %d lqhead %d\n", qhead, lqhead);
+                }
+                p = q;
+            }
+        }
+        if (p == lit_Undef){
+//             return confl;
+            lower_propagation_cutoff();
+            return lazy_propagate();
+
+        }
+        int currLevel = level(var(p));
+        vec<Watcher>&  ws  = watches[p];
+        Watcher        *i, *j, *end;
+        num_props++;
+
+        vec<Watcher>& ws_bin = watches_bin[p];  // Propagate binary clauses first.
+        for (int k = 0; k < ws_bin.size(); k++){
+            Lit the_other = ws_bin[k].blocker;
+            if (value(the_other) == l_False){
+                confl = ws_bin[k].cref;
+#ifdef LOOSE_PROP_STAT
+                return confl;
+#else
+                goto ExitProp;
+#endif
+            }else if(value(the_other) == l_Undef)
+            {
+                uncheckedEnqueue(the_other, currLevel, ws_bin[k].cref);
+#ifdef  PRINT_OUT
+                std::cout << "i " << the_other << " l " << currLevel << "\n";
+#endif
+			}
+        }
+
+        for (i = j = (Watcher*)ws, end = i + ws.size();  i != end;){
+            // Try to avoid inspecting the clause:
+            Lit blocker = i->blocker;
+            if (value(blocker) == l_True){
+                *j++ = *i++; continue; }
+
+            // Make sure the false literal is data[1]:
+            CRef     cr        = i->cref;
+            Clause&  c         = ca[cr];
+            Lit      false_lit = ~p;
+            if (c[0] == false_lit)
+                c[0] = c[1], c[1] = false_lit;
+            assert(c[1] == false_lit);
+            i++;
+
+            // If 0th watch is true, then clause is already satisfied.
+            Lit     first = c[0];
+            Watcher w     = Watcher(cr, first);
+            if (first != blocker && value(first) == l_True){
+                *j++ = w; continue; }
+
+            // Look for new watch:
+            for (int k = 2; k < c.size(); k++)
+                if (value(c[k]) != l_False){
+                    c[1] = c[k]; c[k] = false_lit;
+                    watches[~c[1]].push(w);
+                    goto NextClause; }
+
+            // Did not find watch -- clause is unit under assignment:
+            *j++ = w;
+            if (value(first) == l_False){
+                confl = cr;
+                qhead = trail.size();
+                // Copy the remaining watches:
+                while (i < end)
+                    *j++ = *i++;
+            }else
+            {
+				if (currLevel == decisionLevel())
+				{
+					uncheckedEnqueue(first, currLevel, cr);
+#ifdef PRINT_OUT
+					std::cout << "i " << first << " l " << currLevel << "\n";
+#endif
+				}
+				else
+				{
+					int nMaxLevel = currLevel;
+					int nMaxInd = 1;
+					// pass over all the literals in the clause and find the one with the biggest level
+					for (int nInd = 2; nInd < c.size(); ++nInd)
+					{
+						int nLevel = level(var(c[nInd]));
+						if (nLevel > nMaxLevel)
+						{
+							nMaxLevel = nLevel;
+							nMaxInd = nInd;
+						}
+					}
+
+					if (nMaxInd != 1)
+					{
+						std::swap(c[1], c[nMaxInd]);
+						*j--; // undo last watch
+						watches[~c[1]].push(w);
+					}
+
+					uncheckedEnqueue(first, nMaxLevel, cr);
+#ifdef PRINT_OUT
+					std::cout << "i " << first << " l " << nMaxLevel << "\n";
+#endif
+				}
+			}
+
+NextClause:;
+        }
+        ws.shrink(i - j);
+        if(lqhead < qhead){
+            lqhead = qhead;
+        }
+    }
+    //     if(lqhead > qhead){
+    //         lqhead = qhead;
+    //     }
+
+ExitProp:;
+    propagations += num_props;
+    simpDB_props -= num_props;
+
+    return confl;
+}
 
 /*_________________________________________________________________________________________________
 |
@@ -1953,7 +2128,8 @@ lbool Solver::search(int& nof_conflicts)
     }
 
     for (;;){
-        CRef confl = propagate();
+        startsearch:
+        CRef confl = lazy_propagate();
 
         if (confl != CRef_Undef){
             // CONFLICT
@@ -2113,9 +2289,15 @@ lbool Solver::search(int& nof_conflicts)
                 decisions++;
                 next = pickBranchLit();
 
-                if (next == lit_Undef)
+                if (next == lit_Undef){
                     // Model found:
-                    return l_True;
+                    if (!elements_remaining_to_propagate())
+                        return l_True;
+                    else{
+                        lower_propagation_cutoff();
+                        goto startsearch;
+                    }
+                }
             }
 
             // Increase decision level and enqueue 'next'

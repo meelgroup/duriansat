@@ -294,7 +294,8 @@ protected:
     vec<Lit>            trail;            // Assignment stack; stores all assigments made in the order they were made.
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
     vec<VarData>        vardata;          // Stores reason and level for each variable.
-    int                 qhead;            // Head of queue (as index into the trail -- no more explicit propagation queue in MiniSat).
+    int                 qhead, lqhead;    // Head of queue (as index into the trail -- no more explicit propagation queue in MiniSat).
+    int                 phead;            // Head of queue till the point it has definitely been propagated
     int                 simpDB_assigns;   // Number of top-level assignments since last execution of 'simplify()'.
     int64_t             simpDB_props;     // Remaining number of propagations that must be made before next execution of 'simplify()'.
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
@@ -385,6 +386,18 @@ protected:
 // duplicate learnts version
     int     is_duplicate     (std::vector<uint32_t>&c); //returns TRUE if a clause is duplicate
 // duplicate learnts version
+
+
+    // Lazy propagation methods
+    //
+    double propagation_cutoff;
+
+    CRef     lazy_propagate        ();               // Perform unit propagation. For selected variables
+    bool     up_for_propagation(Lit l);
+    void     lower_propagation_cutoff();
+    void     reset_propagation_cutoff();
+    bool    elements_remaining_to_propagate();
+
 
     // Misc:
     //
