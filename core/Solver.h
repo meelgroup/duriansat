@@ -221,6 +221,7 @@ public:
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
     uint64_t chrono_backtrack, non_chrono_backtrack;
     uint64_t decisions_cbt, decisions_ncbt;
+    uint64_t lsids_same_saved, lsids_opp_saved;
     bool     CBT;
 
 

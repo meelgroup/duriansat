@@ -134,6 +134,7 @@ Solver::Solver() :
   , dec_vars(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
   , chrono_backtrack(0), non_chrono_backtrack(0)
   , decisions_cbt(0), decisions_ncbt(0)
+  , lsids_same_saved(0), lsids_opp_saved(0)
   , CBT(false)
   , ok                 (true)
   , cla_inc            (1)
@@ -1197,6 +1198,11 @@ Lit Solver::pickBranchLit()
 
     if (CBT) {
         lit = pickLsidsBasedPhase(next);
+        if (polarity[next] == sign(lit)) {
+            ++lsids_same_saved;
+        } else {
+            ++lsids_opp_saved;
+        }
         return lit;
     }  else {
         return mkLit(next, polarity[next]);
