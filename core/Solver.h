@@ -225,7 +225,8 @@ public:
     uint64_t duplicates_added_tier2;
     uint64_t duplicates_added_minimization;    
     uint64_t dupl_db_size;
-    
+    double   vivify_bump;
+
     // duplicate learnts version
 
     vec<uint32_t> picked;
