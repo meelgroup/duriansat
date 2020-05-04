@@ -1958,6 +1958,9 @@ lbool Solver::search(int& nof_conflicts)
         if (!simplifyAll()){
             return l_False;
         }
+        if(vivify_bump > 0.001){
+            rebuildOrderHeap();
+        }
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;
     }
