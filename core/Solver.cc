@@ -68,7 +68,7 @@ static IntOption     opt_phase_saving      (_cat, "phase-saving", "Controls the 
 static BoolOption    opt_rnd_init_act      (_cat, "rnd-init",    "Randomize the initial activity", false);
 static IntOption     opt_restart_first     (_cat, "rfirst",      "The base restart interval", 100, IntRange(1, INT32_MAX));
 static DoubleOption  opt_restart_inc       (_cat, "rinc",        "Restart interval increase factor", 2, DoubleRange(1, false, HUGE_VAL, false));
-static DoubleOption  opt_viv_bump          (_cat, "vivbump",      "Value to bump by while vivifying", 2, DoubleRange(0, true, HUGE_VAL, false));
+static DoubleOption  opt_viv_bump          (_cat, "vivbump",      "Value to bump by while vivifying", 0, DoubleRange(0, true, HUGE_VAL, false));
 static DoubleOption  opt_garbage_frac      (_cat, "gc-frac",     "The fraction of wasted memory allowed before a garbage collection is triggered",  0.20, DoubleRange(0, false, HUGE_VAL, false));
 static IntOption     opt_chrono            (_cat, "chrono",  "Controls if to perform chrono backtrack", 100, IntRange(-1, INT32_MAX));
 static IntOption     opt_conf_to_chrono    (_cat, "confl-to-chrono",  "Controls number of conflicts to perform chrono backtrack", 4000, IntRange(-1, INT32_MAX));
@@ -397,7 +397,7 @@ void Solver::simpleAnalyze(CRef confl, vec<Lit>& out_learnt, vec<CRef>& reason_c
         }
         else if (confl == CRef_Undef){
             out_learnt.push(~p);
-            if(VSIDS){
+            if(VSIDS && vivify_bump > 0.01){
                 varBumpActivity(var(p), vivify_bump);
             }
         }
@@ -925,6 +925,10 @@ bool Solver::simplifyAll()
     //if (local_learnts_dirty) cleanLearnts(learnts_local, LOCAL);
     //if (tier2_learnts_dirty) cleanLearnts(learnts_tier2, TIER2);
     //local_learnts_dirty = tier2_learnts_dirty = false;
+
+    if(VSIDS && vivify_bump > 0.01){
+        printf("c [LCM] VSIDS bumps here \n");
+    }
 
     if (!simplifyLearnt_core()) return ok = false;
     if (!simplifyLearnt_tier2()) return ok = false;
@@ -1995,7 +1999,7 @@ lbool Solver::search(int& nof_conflicts)
         if (!simplifyAll()){
             return l_False;
         }
-        if(vivify_bump > 0.001){
+        if(VSIDS && vivify_bump > 0.01){
             rebuildOrderHeap();
         }
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
