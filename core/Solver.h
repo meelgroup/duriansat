@@ -382,6 +382,9 @@ protected:
     void     claBumpActivity  (Clause& c);             // Increase a clause with the current 'bump' value.
     Lit      pickLsidsBasedPhase(Var v);
 
+    // Chronological Backtrack options
+    //
+    bool is_chrono_backtrack(int decision_level, int backtrack_level);
 
     // Operations on clauses:
     //
@@ -574,6 +577,12 @@ inline void Solver::claBumpActivity (Clause& c) {
         for (int i = 0; i < learnts_local.size(); i++)
             ca[learnts_local[i]].activity() *= 1e-20;
         cla_inc *= 1e-20; } }
+
+inline bool Solver::is_chrono_backtrack(int decision_level, int backtrack_level){
+    return (confl_to_chrono < 0 || confl_to_chrono <= conflicts)
+            && chrono > -1
+            && (decision_level - backtrack_level) >= chrono;
+}
 
 inline void Solver::checkGarbage(void){ return checkGarbage(garbage_frac); }
 inline void Solver::checkGarbage(double gf){

@@ -2036,7 +2036,7 @@ lbool Solver::search(int& nof_conflicts)
 
             analyze(confl, learnt_clause, backtrack_level, lbd);
             // check chrono backtrack condition
-            if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
+            if (is_chrono_backtrack(decisionLevel(), backtrack_level))
             {
 				++chrono_backtrack;
                 CBT = true;
