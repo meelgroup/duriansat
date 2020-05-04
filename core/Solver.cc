@@ -78,7 +78,7 @@ static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specif
 
 static const char* cat2 = "LSIDS";
 
-static DoubleOption  opt_lsids_phase       (cat2, "lsids-pick", "Use LSIDS for phase selection. p : when diff between the literal activity is p high then choose LSIDS, else polarity caching.", 0.5, DoubleRange(0, true, 1, true));
+static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids", 0, IntRange(0, 1));
 static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
 //VSIDS_props_limit
 
@@ -126,7 +126,7 @@ Solver::Solver() :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
 
-  , lsids_pick(opt_lsids_phase)
+  , chronopol(opt_chrono_pol)
   , lsids_erase_bump_weight(opt_lsids_erase_weight)
   // Statistics: (formerly in 'SolverStats')
   //
@@ -1196,7 +1196,7 @@ Lit Solver::pickBranchLit()
         std::max(activity_lit[2*next], activity_lit[2*next+1]);
     */
 
-    if (CBT) {
+    if (CBT && chronopol == 1) {
         lit = pickLsidsBasedPhase(next);
         return lit;
     }  else {

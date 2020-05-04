@@ -204,7 +204,7 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
-    double lsids_pick;
+    double chronopol;
     double lsids_erase_bump_weight;
 
     // duplicate learnts version
