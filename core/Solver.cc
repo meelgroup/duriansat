@@ -84,6 +84,9 @@ static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarit
 
 static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids", 0, IntRange(0, 1));
 static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
+
+static IntOption     opt_restart_conf_to_chrono    (_cat, "rstconfltochrono",  "n : do not use CB for first n conflicts of a restart ", 0, IntRange(-1, INT32_MAX));
+
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -132,6 +135,8 @@ Solver::Solver() :
 
   , chronopol(opt_chrono_pol)
   , lsids_erase_bump_weight(opt_lsids_erase_weight)
+  , rstconfltochrono(opt_restart_conf_to_chrono)
+
   // Statistics: (formerly in 'SolverStats')
   //
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
@@ -1985,6 +1990,7 @@ lbool Solver::search(int& nof_conflicts)
     vec<Lit>    learnt_clause;
     bool        cached = false;
     starts++;
+    conflicts_this_start = 0;
 
     // simplify
     //
@@ -2019,6 +2025,7 @@ lbool Solver::search(int& nof_conflicts)
                 if (step_size > min_step_size) step_size -= step_size_dec;
 
             conflicts++; nof_conflicts--;
+            conflicts_this_start++;
             //if (conflicts == 100000 && learnts_core.size() < 100) core_lbd_cut = 5;
             ConflictData data = FindConflictLevel(confl);
             if (data.nHighestLevel == 0) return l_False;

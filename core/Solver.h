@@ -204,8 +204,9 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
 
-    double chronopol;
-    double lsids_erase_bump_weight;
+    double    chronopol;
+    double    lsids_erase_bump_weight;
+    int       rstconfltochrono;
 
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
@@ -217,7 +218,7 @@ public:
 
     // Statistics: (read-only member variable)
     //
-    uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts, conflicts_VSIDS;
+    uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts, conflicts_VSIDS, conflicts_this_start;
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
     uint64_t chrono_backtrack, non_chrono_backtrack;
     uint64_t decisions_cbt, decisions_ncbt;
@@ -579,9 +580,23 @@ inline void Solver::claBumpActivity (Clause& c) {
         cla_inc *= 1e-20; } }
 
 inline bool Solver::is_chrono_backtrack(int decision_level, int backtrack_level){
-    return (confl_to_chrono < 0 || confl_to_chrono <= conflicts)
-            && chrono > -1
-            && (decision_level - backtrack_level) >= chrono;
+    bool chrono_by_level = true;
+    bool chrono_by_conflicts = true;
+    bool chrono_by_restart = true;
+
+    if (chrono < 0 || (decision_level - backtrack_level) < chrono){
+        chrono_by_level = false;
+    }
+
+    if(confl_to_chrono < 0 || confl_to_chrono > conflicts){
+        chrono_by_conflicts = false;
+    }
+
+    if(rstconfltochrono > conflicts_this_start){
+        chrono_by_restart = false;
+    }
+
+    return chrono_by_level && chrono_by_conflicts && chrono_by_restart;
 }
 
 inline void Solver::checkGarbage(void){ return checkGarbage(garbage_frac); }
