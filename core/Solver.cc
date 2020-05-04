@@ -38,6 +38,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "core/Solver.h"
 
 using namespace Minisat;
+using std::cout;
+using std::endl;
 
 //#define PRINT_OUT
 
@@ -66,6 +68,7 @@ static IntOption     opt_phase_saving      (_cat, "phase-saving", "Controls the 
 static BoolOption    opt_rnd_init_act      (_cat, "rnd-init",    "Randomize the initial activity", false);
 static IntOption     opt_restart_first     (_cat, "rfirst",      "The base restart interval", 100, IntRange(1, INT32_MAX));
 static DoubleOption  opt_restart_inc       (_cat, "rinc",        "Restart interval increase factor", 2, DoubleRange(1, false, HUGE_VAL, false));
+static DoubleOption  opt_viv_bump          (_cat, "vivbump",      "Value to bump by while vivifying", 2, DoubleRange(0, true, HUGE_VAL, false));
 static DoubleOption  opt_garbage_frac      (_cat, "gc-frac",     "The fraction of wasted memory allowed before a garbage collection is triggered",  0.20, DoubleRange(0, false, HUGE_VAL, false));
 static IntOption     opt_chrono            (_cat, "chrono",  "Controls if to perform chrono backtrack", 100, IntRange(-1, INT32_MAX));
 static IntOption     opt_conf_to_chrono    (_cat, "confl-to-chrono",  "Controls number of conflicts to perform chrono backtrack", 4000, IntRange(-1, INT32_MAX));
@@ -77,6 +80,7 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 
 static const char* cat2 = "LSIDS";
+static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
 
 static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids", 0, IntRange(0, 1));
 static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
@@ -135,6 +139,7 @@ Solver::Solver() :
   , chrono_backtrack(0), non_chrono_backtrack(0)
   , decisions_cbt(0), decisions_ncbt(0)
   , CBT(false)
+  , vivify_bump        (opt_viv_bump)
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
@@ -164,6 +169,9 @@ Solver::Solver() :
   , conflict_budget    (-1)
   , propagation_budget (-1)
   , asynch_interrupt   (false)
+
+  // Option to add random polarity
+  , random_polarity    (opt_random_pol)
 
   // simplfiy
   , nbSimplifyAll(0)
@@ -389,7 +397,11 @@ void Solver::simpleAnalyze(CRef confl, vec<Lit>& out_learnt, vec<CRef>& reason_c
         }
         else if (confl == CRef_Undef){
             out_learnt.push(~p);
+            if(VSIDS){
+                varBumpActivity(var(p), vivify_bump);
+            }
         }
+
         // if not break, while() will come to the index of trail blow 0, and fatal error occur;
         if (pathC == 0) break;
         // Select next clause to look at:
@@ -1190,6 +1202,13 @@ Lit Solver::pickBranchLit()
         ++decisions_ncbt;
     }
 
+    bool pol;
+
+    if (random_polarity){
+        pol = (bool)irand(random_seed,2);
+        return mkLit(next, pol);
+    }
+
     /*
     long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
     diff_ratio = activity_diff /
@@ -1970,9 +1989,14 @@ lbool Solver::search(int& nof_conflicts)
         //printf("nbClauses: %d, nbLearnts_core: %d, nbLearnts_tier2: %d, nbLearnts_local: %d, nbLearnts: %d\n",
         //	clauses.size(), learnts_core.size(), learnts_tier2.size(), learnts_local.size(),
         //	learnts_core.size() + learnts_tier2.size() + learnts_local.size());
+        cout << "c [LCM] at Restart " << starts << endl;
+
         nbSimplifyAll++;
         if (!simplifyAll()){
             return l_False;
+        }
+        if(vivify_bump > 0.001){
+            rebuildOrderHeap();
         }
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;

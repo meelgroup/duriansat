@@ -229,7 +229,8 @@ public:
     uint64_t duplicates_added_tier2;
     uint64_t duplicates_added_minimization;    
     uint64_t dupl_db_size;
-    
+    double   vivify_bump;
+
     // duplicate learnts version
 
     vec<uint32_t> picked;
@@ -347,6 +348,8 @@ protected:
     int64_t             conflict_budget;    // -1 means no budget.
     int64_t             propagation_budget; // -1 means no budget.
     bool                asynch_interrupt;
+
+    bool random_polarity;
 
     // Main internal methods:
     //
