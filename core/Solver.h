@@ -206,6 +206,8 @@ public:
 
     double    chronopol;
     double    lsids_erase_bump_weight;
+    double    decay_pol;
+    int       use_decay_pol;
     int       rstconfltochrono;
 
     // duplicate learnts version
@@ -222,6 +224,7 @@ public:
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
     uint64_t chrono_backtrack, non_chrono_backtrack;
     uint64_t decisions_cbt, decisions_ncbt;
+    uint64_t same_decision_dec, diff_decision_dec;
     bool     CBT;
 
 
@@ -291,6 +294,7 @@ protected:
     vec<double>         activity_CHB,     // A heuristic measurement of the activity of a variable.
     activity_VSIDS,activity_distance;
     vec<double>         activity_lit;
+    vec<double>         lit_dec_pol; // literal decaying polarity
     double              var_inc;          // Amount to bump next variable with.
     double              lit_inc;
     OccLists<Lit, vec<Watcher>, WatcherDeleted>
@@ -480,6 +484,14 @@ protected:
     static inline int irand(double& seed, int size) {
         return (int)(drand(seed) * size); }
 
+    inline bool use_decay_pol_score(){
+        if(use_decay_pol == 2)
+            return true;
+        else if (use_decay_pol == 1 && CBT)
+            return true;
+        else
+            return false;
+    }
 
     // simplify
     //
