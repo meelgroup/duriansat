@@ -80,12 +80,12 @@ static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "speci
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
 static DoubleOption opt_dec_lit_ph         ("LitScore", "dec-lit-phase", "Keep a decaying score for literal polarity to pick polarity.", 0.5, DoubleRange(0, true, 1, true));
 
-static IntOption     opt_when_dec_lit ("LitScore", "dec-lit",  "When to use decaying literals score? 0 : never 1 : during chrono-bt 2 : always", 0, IntRange(0, 2));
+static BoolOption     opt_when_dec_lit ("LitScore", "dec-lit",  "Use decaying literals score polarity", false);
 
 static const char* cat2 = "LSIDS";
 static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
 
-static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids", 0, IntRange(0, 1));
+static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids 2 : decay-lit-pol", 0, IntRange(0, 1));
 static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
 
 static IntOption     opt_restart_conf_to_chrono    (_cat, "rstconfltochrono",  "n : do not use CB for first n conflicts of a restart ", 0, IntRange(-1, INT32_MAX));
@@ -1216,6 +1216,12 @@ Lit Solver::pickBranchLit()
 #endif
             next = order_heap.removeMin();
         }
+    /*
+    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
+    diff_ratio = activity_diff /
+        std::max(activity_lit[2*next], activity_lit[2*next+1]);
+    */
+
     if(CBT){
         ++decisions_cbt;
     } else {
@@ -1229,17 +1235,11 @@ Lit Solver::pickBranchLit()
         return mkLit(next, pol);
     }
 
-    /*
-    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
-    diff_ratio = activity_diff /
-        std::max(activity_lit[2*next], activity_lit[2*next+1]);
-    */
-
     if (CBT && chronopol == 1) {
         lit = pickLsidsBasedPhase(next);
         return lit;
-    }  else {
-    if(use_decay_pol_score()){
+    }
+    if (CBT && chronopol == 2) {
         if(lit_dec_pol[next] > 0 && polarity[next] ){
             ++same_decision_dec;
         } else if (lit_dec_pol[next] < 0 && !polarity[next] ) {
@@ -1254,10 +1254,10 @@ Lit Solver::pickBranchLit()
             lit = mkLit(next, false);
         }
         return lit;
-    } else {
-        return mkLit(next, polarity[next]);
     }
-    }
+
+    return mkLit(next, polarity[next]);
+}
 
 inline Solver::ConflictData Solver::FindConflictLevel(CRef cind)
 {

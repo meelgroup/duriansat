@@ -207,7 +207,7 @@ public:
     double    chronopol;
     double    lsids_erase_bump_weight;
     double    decay_pol;
-    int       use_decay_pol;
+    bool       use_decay_pol;
     int       rstconfltochrono;
 
     // duplicate learnts version
@@ -485,9 +485,9 @@ protected:
         return (int)(drand(seed) * size); }
 
     inline bool use_decay_pol_score(){
-        if(use_decay_pol == 2)
+        if(use_decay_pol)
             return true;
-        else if (use_decay_pol == 1 && CBT)
+        else if (chronopol == 2 && CBT)
             return true;
         else
             return false;
