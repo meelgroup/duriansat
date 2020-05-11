@@ -605,7 +605,8 @@ inline bool Solver::is_chrono_backtrack(int decision_level, int backtrack_level)
         chrono_by_conflicts = false;
     }
 
-    if(rstconfltochrono > conflicts_this_start){
+    //if(rstconfltochrono > conflicts_this_start){
+    if(nAssigns() < 0.2*nVars() &&  rstconfltochrono > 5){
         chrono_by_restart = false;
     }
 

@@ -1238,6 +1238,8 @@ Lit Solver::pickBranchLit()
         return lit;
     }
     if (CBT && chronopol == 2) {
+//         if(next%5000 == 0)
+//             cout << "c dec_pol v = " << next <<" val : " << lit_dec_pol[next] << endl;
         if(lit_dec_pol[next] > 0 && polarity[next] ){
             ++same_decision_dec;
         } else if (lit_dec_pol[next] < 0 && !polarity[next] ) {
