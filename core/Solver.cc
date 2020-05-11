@@ -78,14 +78,14 @@ static IntOption     opt_min_dupl_app      ("DUP-LEARNTS", "min-dup-app",  "spec
 static IntOption     opt_dupl_db_init_size ("DUP-LEARNTS", "dupdb-init",  "specifies the initial maximal duplicates DB size.", 500000, IntRange(1, INT32_MAX));
 
 static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specifies the number of propagations after which the solver switches between LRB and VSIDS(in millions).", 30, IntRange(1, INT32_MAX));
-static DoubleOption opt_dec_lit_ph         ("LitScore", "dec-lit-phase", "Keep a decaying score for literal polarity to pick polarity.", 0.5, DoubleRange(0, true, 1, true));
+static DoubleOption opt_dec_lit_ph         ("LitScore", "dec-pol", "Keep a decaying score for literal polarity to pick polarity.", 0.5, DoubleRange(0, true, 1, true));
 
 static BoolOption     opt_when_dec_lit ("LitScore", "dec-lit",  "Use decaying literals score polarity", false);
 
 static const char* cat2 = "LSIDS";
 static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
 
-static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids 2 : decay-lit-pol", 0, IntRange(0, 1));
+static IntOption  opt_chrono_pol       (cat2, "chronopol", "Polarity to use during Chronological Backtracking 0 : default 1 : lsids 2 : decay-lit-pol", 0, IntRange(0, 2));
 static DoubleOption opt_lsids_erase_weight (cat2, "lsids-erase-weight", "Weight for LSIDS bump", 2.0, DoubleRange(0, true, 5, true));
 
 static IntOption     opt_restart_conf_to_chrono    (_cat, "rstconfltochrono",  "n : do not use CB for first n conflicts of a restart ", 0, IntRange(-1, INT32_MAX));
@@ -352,6 +352,7 @@ void Solver::simpleUncheckEnqueue(Lit p, CRef from){
     assigns[var(p)] = lbool(!sign(p)); // this makes a lbool object whose value is sign(p)
     vardata[var(p)].reason = from;
     trail.push_(p);
+    phase_last_set_at_decision[var(p)] = decisions;
 }
 
 void Solver::cancelUntilTrailRecord()
@@ -986,6 +987,7 @@ Var Solver::newVar(bool sign, bool dvar)
     seen2    .push(0);
     polarity .push(sign);
     lit_dec_pol.push(sign ? 1.0 : -1.0);
+    phase_last_set_at_decision.push(0);
     decision .push();
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);
@@ -1158,7 +1160,8 @@ void Solver::cancelUntil(int bLevel) {
 					polarity[x] = sign(trail[c]);
                     litBumpActivity(mkLit(x,polarity[x]),lsids_erase_bump_weight);
                     lit_dec_pol[x] *= decay_pol;
-                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0)*trail_length ;
+                    uint64_t var_fixed_for_time = decisions - phase_last_set_at_decision[x];
+                    lit_dec_pol[x] += (sign(trail[c]) ? 1.0 : -1.0)*var_fixed_for_time ;
                 }
 				insertVarOrder(x);
 			}
@@ -1183,7 +1186,6 @@ Lit Solver::pickBranchLit()
 {
     Var next = var_Undef;
     Lit lit = lit_Undef;
-    float diff_ratio = 1;
 
     //    Heap<VarOrderLt>& order_heap = VSIDS ? order_heap_VSIDS : order_heap_CHB;
     Heap<VarOrderLt>& order_heap = DISTANCE ? order_heap_distance : ((!VSIDS)? order_heap_CHB:order_heap_VSIDS);
@@ -1216,11 +1218,6 @@ Lit Solver::pickBranchLit()
 #endif
             next = order_heap.removeMin();
         }
-    /*
-    long double activity_diff = abs(activity_lit[2*next] - activity_lit[2*next+1]);
-    diff_ratio = activity_diff /
-        std::max(activity_lit[2*next], activity_lit[2*next+1]);
-    */
 
     if(CBT){
         ++decisions_cbt;
@@ -1228,6 +1225,7 @@ Lit Solver::pickBranchLit()
         ++decisions_ncbt;
     }
 
+    phase_last_set_at_decision[next] = decisions;
     bool pol;
 
     if (random_polarity){
@@ -1616,6 +1614,8 @@ void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
     assigns[x] = lbool(!sign(p));
     vardata[x] = mkVarData(from, level);
     trail.push_(p);
+    phase_last_set_at_decision[var(p)] = decisions;
+
 }
 
 

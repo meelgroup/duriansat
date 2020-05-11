@@ -294,7 +294,8 @@ protected:
     vec<double>         activity_CHB,     // A heuristic measurement of the activity of a variable.
     activity_VSIDS,activity_distance;
     vec<double>         activity_lit;
-    vec<double>         lit_dec_pol; // literal decaying polarity
+    vec<double>         lit_dec_pol;      // literal decaying polarity
+    vec<uint64_t>       phase_last_set_at_decision;
     double              var_inc;          // Amount to bump next variable with.
     double              lit_inc;
     OccLists<Lit, vec<Watcher>, WatcherDeleted>
