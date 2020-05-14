@@ -7,7 +7,7 @@ MapleLCMDistChronoBTv3 from SAT Race '19 with some new heuristics implemented. O
 To build and install, issue:
 ```
 # getting the code
-git clone https://github.com/arijitsh/mldcsat
+git clone https://github.com/meelgroup/duriansat
 cd mldcsat/simp
 make
 ```
