@@ -8,7 +8,7 @@ To build and install, issue:
 ```
 # getting the code
 git clone https://github.com/meelgroup/duriansat
-cd mldcsat/simp
+cd duriansat/simp
 make
 ```
 ### Running
