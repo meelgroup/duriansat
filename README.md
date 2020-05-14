@@ -1,5 +1,7 @@
-# MLDCSat
-MapleLCMDistChronoBTv3 from SAT Race '19 with some new heuristics implemented.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+# DurianSat SAT solver
+MapleLCMDistChronoBTv3 from SAT Race '19 with some new heuristics implemented. Our [SAT 2020 paper](https://arxiv.org/abs/2005.04850) describes Decaying Polarity Score and LSIDS, which are available in [decay-pol](https://github.com/meelgroup/duriansat/tree/decay-pol) and [lsids](https://github.com/meelgroup/duriansat/tree/lsids) branches respectively.
 
 # Compiling in Linux
 To build and install, issue:
@@ -13,7 +15,3 @@ make
 ```
 ./glucose filename.cnf
 ```
-
-# Licence
-Code published for reviewing process of a paper. Use  of  the  software is allowed for academic and research purposes only. Use of the software in other competitions or similar events without explicit written permission is strictly prohibited. Please get in touch with the author for more details.
-
