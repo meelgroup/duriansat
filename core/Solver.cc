@@ -1318,7 +1318,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
                 if(use_lsids) litBumpActivity(~q, .5);
                 if (VSIDS){
                     varBumpActivity(var(q), .5);
-                    add_tmp.push(q);
+                    // add_tmp.push(q);
                 }else
                     conflicted[var(q)]++;
                 seen[var(q)] = 1;
