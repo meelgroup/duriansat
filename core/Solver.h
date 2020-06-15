@@ -206,7 +206,7 @@ public:
 
     double lsids_pick;
     double lsids_erase_bump_weight;
-
+    bool   use_lsids;
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
     uint32_t       min_number_of_learnts_copies;    
