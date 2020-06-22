@@ -1,4 +1,4 @@
-EXEC      = glucose
+EXEC      = duriansat
 DEPDIR    = mtl utils core
 MROOT     = ../
 
