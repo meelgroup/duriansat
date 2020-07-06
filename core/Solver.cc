@@ -33,7 +33,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <algorithm>
 #include <signal.h>
 #include <unistd.h>
+#include <stdio.h>
 
+#include "utils/terminal.h"
 #include "mtl/Sort.h"
 #include "core/Solver.h"
 
@@ -176,7 +178,13 @@ Solver::Solver() :
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
   , propagation_cutoff (1)
-{}
+{
+    terminal = &tout;
+    terminal->magenta();
+    fputs ("Version ", stdout);
+    fflush(stdout);
+    terminal->magenta(false);
+}
 
 
 Solver::~Solver()

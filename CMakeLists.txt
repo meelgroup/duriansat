@@ -56,6 +56,7 @@ add_definitions(-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 set(DURIANSAT_LIB_SOURCES
     utils/Options.cc
     utils/System.cc
+    utils/terminal.cpp
     core/Solver.cc
     simp/SimpSolver.cc)
 
