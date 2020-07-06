@@ -178,13 +178,7 @@ Solver::Solver() :
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
   , propagation_cutoff (1)
-{
-    terminal = &tout;
-    terminal->magenta();
-    fputs ("Version ", stdout);
-    fflush(stdout);
-    terminal->magenta(false);
-}
+{}
 
 
 Solver::~Solver()
@@ -338,6 +332,7 @@ void Solver::simpleUncheckEnqueue(Lit p, CRef from){
     assigns[var(p)] = lbool(!sign(p)); // this makes a lbool object whose value is sign(p)
     vardata[var(p)].reason = from;
     trail.push_(p);
+    is_propagated.push(0);
 }
 
 void Solver::cancelUntilTrailRecord()
@@ -350,6 +345,7 @@ void Solver::cancelUntilTrailRecord()
     }
     qhead = trailRecord;
     trail.shrink(trail.size() - trailRecord);
+    is_propagated.shrink(trail.size() - trailRecord);
 
 }
 
@@ -962,6 +958,7 @@ Var Solver::newVar(bool sign, bool dvar)
     polarity .push(sign);
     decision .push();
     trail    .capacity(v+1);
+    is_propagated    .capacity(v+1);
     setDecisionVar(v, dvar);
 
     activity_distance.push(0);
@@ -1133,10 +1130,13 @@ void Solver::cancelUntil(int bLevel) {
         }
         qhead = trail_lim[bLevel];
         trail.shrink(trail.size() - trail_lim[bLevel]);
+        is_propagated.shrink(trail.size() - trail_lim[bLevel]);
         trail_lim.shrink(trail_lim.size() - bLevel);
         for (int nLitId = add_tmp.size() - 1; nLitId >= 0; --nLitId)
 		{
 			trail.push_(add_tmp[nLitId]);
+            is_propagated.push(0);
+
 		}
 		
 		add_tmp.clear();
@@ -1546,6 +1546,8 @@ void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
     assigns[x] = lbool(!sign(p));
     vardata[x] = mkVarData(from, level);
     trail.push_(p);
+    is_propagated.push(0);
+
 }
 
 
@@ -1683,6 +1685,22 @@ ExitProp:;
 
 // --------------------- Just Lazy Propagation things -------------------
 //
+void Solver::print_trail(){
+    terminal = &tout;
+    terminal->magenta();
+    for(int it = 0; it < trail.size(); it++){
+        int item = sign(trail[it])*var(trail[it]);
+        if (is_propagated[it] == 1){terminal->green(); fprintf( stdout, "%d ", item);}
+        if (is_propagated[it] == -1){terminal->red(); fprintf( stdout, "%d ", item);}
+        if (is_propagated[it] == 0){terminal->yellow(); fprintf( stdout, "%d ", item);}
+        if (qhead == it) {terminal->magenta(); fputs("| ", stdout);}
+        if (lqhead == it) {terminal->blue(); fputs("| ", stdout);}
+    }
+    fputc('\n',stdout);
+    fflush(stdout);
+    terminal->normal();
+}
+
 
 bool Solver::elements_remaining_to_propagate(){
     if(qhead < trail.size()){
@@ -1706,7 +1724,6 @@ bool Solver::up_for_propagation(Lit l){
         return true;
     else{
         return false;
-        printf (":o\n");
     }
 }
 
@@ -1719,14 +1736,16 @@ CRef Solver::lazy_propagate()
     watches_bin.cleanAll();
     lqhead = qhead;
     while (lqhead < trail.size()){
+        print_trail();
         Lit            p   = lit_Undef;
         while (p == lit_Undef){
             Lit q = trail[lqhead++];     // 'p' is enqueued fact to propagate.
             if(up_for_propagation(q)){
                 if(lqhead == qhead + 1){
+                    is_propagated[lqhead] = 1;
                     qhead++;
                 } else {
-                    printf(":o qhead : %d lqhead %d\n", qhead, lqhead);
+                    is_propagated[lqhead] = -1;
                 }
                 p = q;
             }

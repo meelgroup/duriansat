@@ -169,6 +169,10 @@ public:
     void    checkGarbage(double gf);
     void    checkGarbage();
 
+    // Colorful Printing
+
+    void print_trail();
+
     // Extra results: (read-only member variable)
     //
     vec<lbool> model;             // If problem is satisfiable, this vector contains the model (if any).
@@ -294,6 +298,8 @@ protected:
     vec<char>           decision;         // Declares if a variable is eligible for selection in the decision heuristic.
     vec<Lit>            trail;            // Assignment stack; stores all assigments made in the order they were made.
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
+    vec<int>            is_propagated;    // of size equal to trail; 0 -> no item ; 1 -> propagated
+                                          // -1  -> skipped_proapgation
     vec<VarData>        vardata;          // Stores reason and level for each variable.
     int                 qhead, lqhead;    // Head of queue (as index into the trail -- no more explicit propagation queue in MiniSat).
     int                 phead;            // Head of queue till the point it has definitely been propagated
