@@ -1572,6 +1572,7 @@ CRef Solver::propagate()
     watches_bin.cleanAll();
 
     while (qhead < trail.size()){
+        print_trail();
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
         int currLevel = level(var(p));
         vec<Watcher>&  ws  = watches[p];
@@ -1697,8 +1698,8 @@ void Solver::print_trail(){
         if (lqhead == it) {terminal->blue(); fputs("| ", stdout);}
     }
     fputc('\n',stdout);
-    fflush(stdout);
     terminal->normal();
+    fflush(stdout);
 }
 
 
@@ -1712,6 +1713,7 @@ bool Solver::elements_remaining_to_propagate(){
 
 void Solver::lower_propagation_cutoff(){
     propagation_cutoff = 0;
+    printf("c lowering propagation cutoff \n");
 };
 
 
@@ -1734,6 +1736,7 @@ CRef Solver::lazy_propagate()
     int     num_props = 0;
     watches.cleanAll();
     watches_bin.cleanAll();
+    startProp:
     lqhead = qhead;
     while (lqhead < trail.size()){
         print_trail();
@@ -1750,10 +1753,10 @@ CRef Solver::lazy_propagate()
                 p = q;
             }
         }
-        if (p == lit_Undef){
+        if (p == lit_Undef && qhead < trail.size()-1){
 //             return confl;
             lower_propagation_cutoff();
-            return lazy_propagate();
+            goto startProp;
 
         }
         int currLevel = level(var(p));
@@ -2156,7 +2159,13 @@ lbool Solver::search(int& nof_conflicts)
 
     for (;;){
         startsearch:
-        CRef confl = lazy_propagate();
+        CRef confl = CRef_Undef;
+
+        if(opt_lazy_prop){
+            confl = lazy_propagate();
+        } else {
+            confl = propagate();
+        }
 
         if (confl != CRef_Undef){
             // CONFLICT
