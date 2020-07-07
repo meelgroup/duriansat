@@ -138,6 +138,8 @@ Solver::Solver() :
   , watches_bin        (WatcherDeleted(ca))
   , watches            (WatcherDeleted(ca))
   , qhead              (0)
+  , lqhead             (0)
+  , lqhead_shifted     (false)
   , simpDB_assigns     (-1)
   , simpDB_props       (0)
   , order_heap_CHB     (VarOrderLt(activity_CHB))
@@ -1128,7 +1130,12 @@ void Solver::cancelUntil(int bLevel) {
 				insertVarOrder(x);
 			}
         }
-        qhead = trail_lim[bLevel];
+        if(opt_lazy_prop)
+            lqhead = trail_lim[bLevel];
+        else
+            qhead = trail_lim[bLevel];
+
+        lqhead_shifted = true;
         trail.shrink(trail.size() - trail_lim[bLevel]);
         is_propagated.shrink(trail.size() - trail_lim[bLevel]);
         trail_lim.shrink(trail_lim.size() - bLevel);
@@ -1690,12 +1697,12 @@ void Solver::print_trail(){
     terminal = &tout;
     terminal->magenta();
     for(int it = 0; it < trail.size(); it++){
-        int item = sign(trail[it])*var(trail[it]);
+        int item = sign(trail[it])?var(trail[it]):-var(trail[it]);
         if (is_propagated[it] == 1){terminal->green(); fprintf( stdout, "%d ", item);}
         if (is_propagated[it] == -1){terminal->red(); fprintf( stdout, "%d ", item);}
         if (is_propagated[it] == 0){terminal->yellow(); fprintf( stdout, "%d ", item);}
-        if (qhead == it) {terminal->magenta(); fputs("| ", stdout);}
-        if (lqhead == it) {terminal->blue(); fputs("| ", stdout);}
+        if (qhead-1 == it) {terminal->magenta(); fputs("| ", stdout);}
+        if (lqhead-1 == it) {terminal->blue(true); fputs("| ", stdout);}
     }
     fputc('\n',stdout);
     terminal->normal();
@@ -1712,7 +1719,7 @@ bool Solver::elements_remaining_to_propagate(){
 }
 
 void Solver::lower_propagation_cutoff(){
-    propagation_cutoff = 0;
+    propagation_cutoff -= 0.25;
     printf("c lowering propagation cutoff \n");
 };
 
@@ -1721,12 +1728,19 @@ bool Solver::up_for_propagation(Lit l){
     Var v = var(l);
 //     printf(" %d ",v);
     if (v <= 0 || v >= nVars()) return true; // TODO : Why so?
+
     assert(activity_VSIDS[v] >= 0);
+
+    bool random_dec = (drand(random_seed)>propagation_cutoff) ? true : false;
+    return random_dec;
+
+    /*
     if (activity_VSIDS[v] >= propagation_cutoff)
         return true;
     else{
         return false;
     }
+    */
 }
 
 
@@ -1741,24 +1755,20 @@ CRef Solver::lazy_propagate()
     while (lqhead < trail.size()){
         print_trail();
         Lit            p   = lit_Undef;
-        while (p == lit_Undef){
+        while (p == lit_Undef && lqhead < trail.size()){
             Lit q = trail[lqhead++];     // 'p' is enqueued fact to propagate.
             if(up_for_propagation(q)){
-                if(lqhead == qhead + 1){
-                    is_propagated[lqhead] = 1;
-                    qhead++;
-                } else {
-                    is_propagated[lqhead] = -1;
-                }
                 p = q;
-            }
+                is_propagated[lqhead-1] = 1;
+                if(lqhead == qhead + 1){ qhead++;}
+            } else { is_propagated[lqhead-1] = -1; }
         }
-        if (p == lit_Undef && qhead < trail.size()-1){
-//             return confl;
-            lower_propagation_cutoff();
-            goto startProp;
-
-        }
+//         if (p == lit_Undef && qhead < trail.size()){
+// //             return confl;
+//             lower_propagation_cutoff();
+//             goto startProp;
+//
+//         }
         int currLevel = level(var(p));
         vec<Watcher>&  ws  = watches[p];
         Watcher        *i, *j, *end;
@@ -1815,7 +1825,10 @@ CRef Solver::lazy_propagate()
             *j++ = w;
             if (value(first) == l_False){
                 confl = cr;
-                qhead = trail.size();
+                lqhead = trail.size();
+                printf("c lqhead shifted as clause is unit under assignment\n");
+                print_trail();
+                lqhead_shifted = true;
                 // Copy the remaining watches:
                 while (i < end)
                     *j++ = *i++;
@@ -2169,6 +2182,8 @@ lbool Solver::search(int& nof_conflicts)
 
         if (confl != CRef_Undef){
             // CONFLICT
+            printf("c conflicted\n");
+
             if (VSIDS){
                 if (--timer == 0 && var_decay < 0.95) timer = 5000, var_decay += 0.01;
             }else
@@ -2327,6 +2342,7 @@ lbool Solver::search(int& nof_conflicts)
 
                 if (next == lit_Undef){
                     // Model found:
+                    print_trail();
                     if (!elements_remaining_to_propagate())
                         return l_True;
                     else{

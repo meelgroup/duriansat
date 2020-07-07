@@ -302,6 +302,7 @@ protected:
                                           // -1  -> skipped_proapgation
     vec<VarData>        vardata;          // Stores reason and level for each variable.
     int                 qhead, lqhead;    // Head of queue (as index into the trail -- no more explicit propagation queue in MiniSat).
+    bool                lqhead_shifted;
     int                 phead;            // Head of queue till the point it has definitely been propagated
     int                 simpDB_assigns;   // Number of top-level assignments since last execution of 'simplify()'.
     int64_t             simpDB_props;     // Remaining number of propagations that must be made before next execution of 'simplify()'.
