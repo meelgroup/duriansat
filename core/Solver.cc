@@ -1125,8 +1125,10 @@ void Solver::cancelUntil(int bLevel) {
 #ifdef PRINT_OUT
 				std::cout << "undo " << x << "\n";
 #endif				
-	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last())
+	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
+                    is_propagated[c] = 0;
+                }
 				insertVarOrder(x);
 			}
         }
@@ -1592,8 +1594,10 @@ CRef Solver::propagate()
             if (value(the_other) == l_False){
                 confl = ws_bin[k].cref;
 #ifdef LOOSE_PROP_STAT
+                printf("a binary confl\n");
                 return confl;
 #else
+                printf("a binary confl\n");
                 goto ExitProp;
 #endif
             }else if(value(the_other) == l_Undef)
@@ -1688,12 +1692,15 @@ ExitProp:;
     propagations += num_props;
     simpDB_props -= num_props;
 
+    printf("not a binary confl\n");
     return confl;
 }
 
 // --------------------- Just Lazy Propagation things -------------------
 //
 void Solver::print_trail(){
+    if(verbosity <= 1)
+        return;
     terminal = &tout;
     terminal->magenta();
     for(int it = 0; it < trail.size(); it++){
@@ -1714,7 +1721,17 @@ bool Solver::elements_remaining_to_propagate(){
     if(qhead < trail.size()){
         return true;
     } else {
-        return false;
+        int old_qhead = qhead;
+        qhead = 0;
+        printf("c calling check propagate\n");
+        CRef confl = propagate();
+        printf("c finishing check propagate\n");
+        if (confl != CRef_Undef){
+//             qhead = old_qhead;
+            return true;
+        }
+        else
+            return false;
     }
 }
 
@@ -2175,7 +2192,19 @@ lbool Solver::search(int& nof_conflicts)
         CRef confl = CRef_Undef;
 
         if(opt_lazy_prop){
-            confl = lazy_propagate();
+            if (propagate_needed){
+                printf("c forcing propagate\n");
+                propagate_needed = false;
+                propagation_cutoff = 1;
+                qhead = 0;
+                confl = propagate();
+                if (confl != CRef_Undef)
+                    printf("c learnt something\n");
+                else
+                    printf("c no conflict here\n");
+            } else {
+                confl = lazy_propagate();
+            }
         } else {
             confl = propagate();
         }
@@ -2193,11 +2222,12 @@ lbool Solver::search(int& nof_conflicts)
             //if (conflicts == 100000 && learnts_core.size() < 100) core_lbd_cut = 5;
             ConflictData data = FindConflictLevel(confl);
             if (data.nHighestLevel == 0) return l_False;
-            if (data.bOnlyOneLitFromHighest)
-            {
-				cancelUntil(data.nHighestLevel - 1);
-				continue;
-			}
+//             if (data.bOnlyOneLitFromHighest)
+//             {
+// 				printf("c shit\n");
+//                 cancelUntil(data.nHighestLevel - 1);
+// 				continue;
+// 			}
 			
             learnt_clause.clear();
             if(conflicts>50000) DISTANCE=0;
@@ -2217,6 +2247,7 @@ lbool Solver::search(int& nof_conflicts)
 			{
 				++non_chrono_backtrack;
                 CBT = false;
+                printf("c backtrack to level %d\n", backtrack_level);
 				cancelUntil(backtrack_level);
 			}
 
@@ -2343,10 +2374,13 @@ lbool Solver::search(int& nof_conflicts)
                 if (next == lit_Undef){
                     // Model found:
                     print_trail();
-                    if (!elements_remaining_to_propagate())
+                    if (!elements_remaining_to_propagate()){
                         return l_True;
+                    }
                     else{
                         lower_propagation_cutoff();
+                        if (!(qhead < trail.size()))
+                            propagate_needed = true;
                         goto startsearch;
                     }
                 }

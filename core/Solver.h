@@ -352,6 +352,7 @@ protected:
     bool                asynch_interrupt;
 
     bool random_polarity;
+    bool propagate_needed;
 
     // Main internal methods:
     //
