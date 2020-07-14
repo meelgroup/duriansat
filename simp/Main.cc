@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 {
     try {
         setUsageHelp("USAGE: %s [options] <input-file> <result-output-file>\n\n  where input may be either in plain or gzipped DIMACS.\n");
-        printf("c This is MapleLCMDistChronoBT-DL.\n");
+        printf("c This is DurianSat.\n");
         
 #if defined(__linux__)
         fpu_control_t oldcw, newcw;
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
             printf("c ERROR! Could not open file: %s\n", argc == 1 ? "<stdin>" : argv[1]), exit(1);
         
         if (S.verbosity > 0){
-            // printf("c | Git Version : %s \n",VERSION);
+            printf("c | Git Version : %s \n",VERSION);
             printf("c ============================[ Problem Statistics ]=============================\n");
             printf("c |                                                                             |\n"); }
         

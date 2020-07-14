@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 
 project(duriansat)
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 #--------------------------------------------------------------------------------------------------
 # Configurable options:
@@ -38,7 +39,21 @@ add_cxx_flag_if_supported("-Wparentheses")
 add_cxx_flag_if_supported("-Wunreachable-code")
 add_cxx_flag_if_supported("-ggdb3")
 
-add_compile_options( -g)
+add_compile_options( -O3)
+
+
+# -----------------------------------------------------------------------------
+# Add GIT version
+
+find_program (GIT_EXECUTABLE git)
+if (GIT_EXECUTABLE)
+  include(GetGitRevisionDescription)
+  get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+  MESSAGE(STATUS "GIT hash found: ${GIT_SHA1}")
+  add_definitions( -DVERSION="${GIT_SHA1}" )
+else()
+  set(GIT_SHA "GIT-hash-notfound")
+endif()
 
 
 #--------------------------------------------------------------------------------------------------
@@ -59,7 +74,7 @@ add_definitions(-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 set(DURIANSAT_LIB_SOURCES
     utils/Options.cc
     utils/System.cc
-    utils/terminal.cpp
+    utils/terminal.cc
     core/Solver.cc
     simp/SimpSolver.cc)
 
@@ -75,9 +90,9 @@ target_link_libraries(duriansat-lib-static ${ZLIB_LIBRARY})
 add_executable(duriansat_simp simp/Main.cc)
 
 if(STATIC_BINARIES)
-  target_link_libraries(duriansat_simp duriansat-lib-static)
+  target_link_libraries(duriansat_simp duriansat-lib-static -static)
 else()
-  target_link_libraries(duriansat_simp mapleat-lib-shared)
+  target_link_libraries(duriansat_simp duriansat-lib-shared)
 endif()
 
 set_target_properties(duriansat-lib-static PROPERTIES OUTPUT_NAME "duriansat")
