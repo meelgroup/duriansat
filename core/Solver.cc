@@ -1100,6 +1100,8 @@ void Solver::cancelUntil(int bLevel) {
 			if (level(x) <= bLevel)
 			{
 				add_tmp.push(trail[c]);
+                is_propagated[c] = 0;
+
 			}
 			else
 			{
@@ -1122,20 +1124,25 @@ void Solver::cancelUntil(int bLevel) {
 				}
 				
 				assigns [x] = l_Undef;
+                is_propagated[c] = 0;
+
 #ifdef PRINT_OUT
 				std::cout << "undo " << x << "\n";
 #endif				
 	            if (phase_saving > 1 || (phase_saving == 1) && c > trail_lim.last()){
 					polarity[x] = sign(trail[c]);
-                    is_propagated[c] = 0;
                 }
 				insertVarOrder(x);
 			}
         }
-        if(opt_lazy_prop)
+        if(opt_lazy_prop){
             lqhead = trail_lim[bLevel];
-        else
+            if(qhead > lqhead)
+                qhead = lqhead;
+        }
+        else{
             qhead = trail_lim[bLevel];
+        }
 
         lqhead_shifted = true;
         trail.shrink(trail.size() - trail_lim[bLevel]);
@@ -1734,8 +1741,13 @@ bool Solver::elements_remaining_to_propagate(){
     }
 }
 
+void Solver::reset_propagation_cutoff(){
+    propagation_cutoff = 0.75;
+    if(verbosity > 1) printf("c resetting propagation cutoff \n");
+};
+
 void Solver::lower_propagation_cutoff(){
-    propagation_cutoff -= 0.25;
+    propagation_cutoff -= 0.1;
     if(verbosity > 1) printf("c lowering propagation cutoff \n");
 };
 
@@ -2203,7 +2215,7 @@ lbool Solver::search(int& nof_conflicts)
             if (propagate_needed){
                 if(verbosity > 1) printf("c forcing propagate\n");
                 propagate_needed = false;
-                propagation_cutoff = 1;
+                reset_propagation_cutoff();
                 qhead = 0;
                 confl = propagate();
                 if(verbosity > 1) {
@@ -2214,7 +2226,8 @@ lbool Solver::search(int& nof_conflicts)
                 }
             } else {
                 confl = lazy_propagate();
-                if(confl != CRef_Undef && verbosity > 1) printf("c conflicted by lazy\n");
+                if(confl != CRef_Undef && verbosity > 1)
+                    printf("c conflicted by lazy\n");
             }
         } else {
             confl = propagate();
@@ -2262,6 +2275,8 @@ lbool Solver::search(int& nof_conflicts)
                 if(verbosity > 1)
                     printf("c backtrack to level %d\n", backtrack_level);
 				cancelUntil(backtrack_level);
+                if(qhead ==lqhead)
+                    reset_propagation_cutoff();
 			}
 
             lbd--;
