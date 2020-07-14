@@ -1582,6 +1582,7 @@ CRef Solver::propagate()
 
     while (qhead < trail.size()){
         print_trail();
+        is_propagated[qhead] = 1;
         Lit            p   = trail[qhead++];     // 'p' is enqueued fact to propagate.
         int currLevel = level(var(p));
         vec<Watcher>&  ws  = watches[p];
@@ -1594,10 +1595,9 @@ CRef Solver::propagate()
             if (value(the_other) == l_False){
                 confl = ws_bin[k].cref;
 #ifdef LOOSE_PROP_STAT
-                printf("a binary confl\n");
+                if(verbosity > 1) printf("a binary confl\n");
                 return confl;
 #else
-                printf("a binary confl\n");
                 goto ExitProp;
 #endif
             }else if(value(the_other) == l_Undef)
@@ -1692,7 +1692,7 @@ ExitProp:;
     propagations += num_props;
     simpDB_props -= num_props;
 
-    printf("not a binary confl\n");
+    if(verbosity > 1) printf("not a binary confl\n");
     return confl;
 }
 
@@ -1721,11 +1721,10 @@ bool Solver::elements_remaining_to_propagate(){
     if(qhead < trail.size()){
         return true;
     } else {
-        int old_qhead = qhead;
         qhead = 0;
-        printf("c calling check propagate\n");
+        if(verbosity > 1) printf("c calling check propagate\n");
         CRef confl = propagate();
-        printf("c finishing check propagate\n");
+        if(verbosity > 1) printf("c finishing check propagate\n");
         if (confl != CRef_Undef){
 //             qhead = old_qhead;
             return true;
@@ -1737,7 +1736,7 @@ bool Solver::elements_remaining_to_propagate(){
 
 void Solver::lower_propagation_cutoff(){
     propagation_cutoff -= 0.25;
-    printf("c lowering propagation cutoff \n");
+    if(verbosity > 1) printf("c lowering propagation cutoff \n");
 };
 
 
@@ -1772,13 +1771,20 @@ CRef Solver::lazy_propagate()
     while (lqhead < trail.size()){
         print_trail();
         Lit            p   = lit_Undef;
+        bool none_was_up_for_prop = true;
         while (p == lit_Undef && lqhead < trail.size()){
             Lit q = trail[lqhead++];     // 'p' is enqueued fact to propagate.
             if(up_for_propagation(q)){
                 p = q;
+                none_was_up_for_prop = false;
                 is_propagated[lqhead-1] = 1;
                 if(lqhead == qhead + 1){ qhead++;}
             } else { is_propagated[lqhead-1] = -1; }
+        }
+        if(p == lit_Undef){
+            assert(lqhead == trail.size() && qhead < trail.size());
+            assert(none_was_up_for_prop);
+            p = trail[lqhead-1];
         }
 //         if (p == lit_Undef && qhead < trail.size()){
 // //             return confl;
@@ -1843,7 +1849,8 @@ CRef Solver::lazy_propagate()
             if (value(first) == l_False){
                 confl = cr;
                 lqhead = trail.size();
-                printf("c lqhead shifted as clause is unit under assignment\n");
+                if(verbosity > 1)
+                    printf("c lqhead shifted as clause is unit under assignment\n");
                 print_trail();
                 lqhead_shifted = true;
                 // Copy the remaining watches:
@@ -2038,7 +2045,8 @@ bool Solver::simplify()
 bool Solver::collectFirstUIP(CRef confl){
     involved_lits.clear();
     int max_level=1;
-    Clause& c=ca[confl]; int minLevel=decisionLevel();
+    Clause& c=ca[confl];
+    int minLevel=decisionLevel();
     for(int i=0; i<c.size(); i++) {
         Var v=var(c[i]);
         //        assert(!seen[v]);
@@ -2193,17 +2201,20 @@ lbool Solver::search(int& nof_conflicts)
 
         if(opt_lazy_prop){
             if (propagate_needed){
-                printf("c forcing propagate\n");
+                if(verbosity > 1) printf("c forcing propagate\n");
                 propagate_needed = false;
                 propagation_cutoff = 1;
                 qhead = 0;
                 confl = propagate();
-                if (confl != CRef_Undef)
-                    printf("c learnt something\n");
-                else
-                    printf("c no conflict here\n");
+                if(verbosity > 1) {
+                    if (confl != CRef_Undef)
+                        printf("c learnt something\n");
+                    else
+                        printf("c no conflict here\n");
+                }
             } else {
                 confl = lazy_propagate();
+                if(confl != CRef_Undef && verbosity > 1) printf("c conflicted by lazy\n");
             }
         } else {
             confl = propagate();
@@ -2211,7 +2222,8 @@ lbool Solver::search(int& nof_conflicts)
 
         if (confl != CRef_Undef){
             // CONFLICT
-            printf("c conflicted\n");
+            if(verbosity > 1)
+                printf("c conflicted\n");
 
             if (VSIDS){
                 if (--timer == 0 && var_decay < 0.95) timer = 5000, var_decay += 0.01;
@@ -2247,7 +2259,8 @@ lbool Solver::search(int& nof_conflicts)
 			{
 				++non_chrono_backtrack;
                 CBT = false;
-                printf("c backtrack to level %d\n", backtrack_level);
+                if(verbosity > 1)
+                    printf("c backtrack to level %d\n", backtrack_level);
 				cancelUntil(backtrack_level);
 			}
 
