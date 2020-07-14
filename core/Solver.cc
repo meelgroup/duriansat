@@ -1595,7 +1595,7 @@ CRef Solver::propagate()
             if (value(the_other) == l_False){
                 confl = ws_bin[k].cref;
 #ifdef LOOSE_PROP_STAT
-                if(verbosity > 1) printf("a binary confl\n");
+                if(verbosity > 2) printf("a binary confl\n");
                 return confl;
 #else
                 goto ExitProp;
@@ -1692,7 +1692,7 @@ ExitProp:;
     propagations += num_props;
     simpDB_props -= num_props;
 
-    if(verbosity > 1) printf("not a binary confl\n");
+    if(verbosity > 2) printf("not a binary confl\n");
     return confl;
 }
 
