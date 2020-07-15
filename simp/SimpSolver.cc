@@ -162,7 +162,7 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
 #else
         for (int i = 0; i < ps.size(); i++)
             fprintf(drup_file, "%i ", (var(ps[i]) + 1) * (-2 * sign(ps[i]) + 1));
-        fprintf(drup_file, "0\n");
+        fprintf(drup_file, "0 [addcl_s]\n");
 #endif
     }
 
@@ -222,7 +222,7 @@ bool SimpSolver::strengthenClause(CRef cr, Lit l)
 #else
         for (int i = 0; i < c.size(); i++)
             if (c[i] != l) fprintf(drup_file, "%i ", (var(c[i]) + 1) * (-2 * sign(c[i]) + 1));
-        fprintf(drup_file, "0\n");
+        fprintf(drup_file, "0 [strengthen]\n");
 #endif
     }
 

@@ -3,6 +3,13 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(duriansat)
 SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+    message(STATUS "Ok, CCache found!")
+endif(CCACHE_FOUND)
+
 #--------------------------------------------------------------------------------------------------
 # Configurable options:
 

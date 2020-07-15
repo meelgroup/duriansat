@@ -80,6 +80,7 @@ static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specif
 
 static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
 static BoolOption    opt_lazy_prop      (_cat, "lazy-prop",    "Be Lazy in propagating", false);
+static BoolOption    opt_drat_info      (_cat, "drat-info",    "Add execess information in DRUP", false);
 
 //VSIDS_props_limit
 
@@ -165,6 +166,9 @@ Solver::Solver() :
 
   // Option to add random polarity
   , random_polarity    (opt_random_pol)
+  , do_lazy_prop       (opt_lazy_prop)
+  , add_drup_info      (opt_drat_info)
+  , clause_source      ("")
 
   // simplfiy
   , nbSimplifyAll(0)
@@ -661,7 +665,7 @@ bool Solver::simplifyLearnt_core()
 #else
                     for (int i = 0; i < c.size(); i++)
                         fprintf(drup_file, "%i ", (var(c[i]) + 1) * (-2 * sign(c[i]) + 1));
-                    fprintf(drup_file, "0\n");
+                    fprintf(drup_file, "0 [vivify-core]\n");
 
                     //                    fprintf(drup_file, "d ");
                     //                    for (int i = 0; i < add_oc.size(); i++)
@@ -828,7 +832,7 @@ bool Solver::simplifyLearnt_tier2()
 #else
                     for (int i = 0; i < c.size(); i++)
                         fprintf(drup_file, "%i ", (var(c[i]) + 1) * (-2 * sign(c[i]) + 1));
-                    fprintf(drup_file, "0\n");
+                    fprintf(drup_file, "0 [vivify-t2]\n");
 
                     //                    fprintf(drup_file, "d ");
                     //                    for (int i = 0; i < add_oc.size(); i++)
@@ -997,9 +1001,15 @@ bool Solver::addClause_(vec<Lit>& ps)
         binDRUP('a', ps, drup_file);
         binDRUP('d', add_oc, drup_file);
 #else
+
+        clause_source = "addcl_";
         for (int i = 0; i < ps.size(); i++)
             fprintf(drup_file, "%i ", (var(ps[i]) + 1) * (-2 * sign(ps[i]) + 1));
-        fprintf(drup_file, "0\n");
+        if (add_drup_info)
+            fprintf(drup_file, "0 [%s:%lu]\n", clause_source,conflicts);
+        else
+            fprintf(drup_file, "0\n");
+        clause_source = "";
 
         fprintf(drup_file, "d ");
         for (int i = 0; i < add_oc.size(); i++)
@@ -1135,7 +1145,7 @@ void Solver::cancelUntil(int bLevel) {
 				insertVarOrder(x);
 			}
         }
-        if(opt_lazy_prop){
+        if(do_lazy_prop){
             lqhead = trail_lim[bLevel];
             if(qhead > lqhead)
                 qhead = lqhead;
@@ -1734,8 +1744,9 @@ bool Solver::elements_remaining_to_propagate(){
         return true;
     } else {
         qhead = 0;
-        if(verbosity > 1) printf("c calling check propagate\n");
+        if(verbosity > 0) printf("c calling check propagate\n");
         CRef confl = propagate();
+//         last_propagate_type = 3;
         if(verbosity > 1) printf("c finishing check propagate\n");
         if (confl != CRef_Undef){
 //             qhead = old_qhead;
@@ -2212,18 +2223,19 @@ lbool Solver::search(int& nof_conflicts)
         curSimplify = (conflicts / nbconfbeforesimplify) + 1;
         nbconfbeforesimplify += incSimplify;
     }
-
+    int last_propagate_type = 0; // o : not_known, 1 : lazy, 2: normal 3 : force-normal
     for (;;){
         startsearch:
         CRef confl = CRef_Undef;
 
-        if(opt_lazy_prop){
+        if(do_lazy_prop){
             if (propagate_needed){
                 if(verbosity > 1) printf("c forcing propagate\n");
                 propagate_needed = false;
                 reset_propagation_cutoff();
                 qhead = 0;
                 confl = propagate();
+                last_propagate_type = 3;
                 if(verbosity > 1) {
                     if (confl != CRef_Undef)
                         printf("c learnt something\n");
@@ -2232,11 +2244,13 @@ lbool Solver::search(int& nof_conflicts)
                 }
             } else {
                 confl = lazy_propagate();
+                last_propagate_type = 1;
                 if(confl != CRef_Undef && verbosity > 1)
                     printf("c conflicted by lazy\n");
             }
         } else {
             confl = propagate();
+            last_propagate_type = 2;
         }
 
         if (confl != CRef_Undef){
@@ -2273,7 +2287,9 @@ lbool Solver::search(int& nof_conflicts)
 				++chrono_backtrack;
                 CBT = true;
 				cancelUntil(data.nHighestLevel -1);
-			}
+                if(qhead ==lqhead)
+                    reset_propagation_cutoff();
+            }
 			else // default behavior
 			{
 				++non_chrono_backtrack;
@@ -2335,9 +2351,17 @@ lbool Solver::search(int& nof_conflicts)
 #ifdef BIN_DRUP
                 binDRUP('a', learnt_clause, drup_file);
 #else
+                if(last_propagate_type == 1)
+                    clause_source = "lazy";
+                else if (last_propagate_type == 2)
+                    clause_source = "eager-prop";
+                else if (last_propagate_type == 3)
+                    clause_source = "force-prop";
                 for (int i = 0; i < learnt_clause.size(); i++)
                     fprintf(drup_file, "%i ", (var(learnt_clause[i]) + 1) * (-2 * sign(learnt_clause[i]) + 1));
-                fprintf(drup_file, "0\n");
+                fprintf(drup_file, "0 [%s:%lu]\n", clause_source,conflicts);
+                clause_source = "";
+                last_propagate_type = 0;
 #endif
             }
 

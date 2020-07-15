@@ -352,6 +352,9 @@ protected:
     bool                asynch_interrupt;
 
     bool random_polarity;
+    bool do_lazy_prop;
+    bool add_drup_info;
+    const char* clause_source;
     bool propagate_needed;
 
     // Main internal methods:
