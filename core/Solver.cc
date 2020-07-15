@@ -334,7 +334,7 @@ void Solver::simpleUncheckEnqueue(Lit p, CRef from){
     assigns[var(p)] = lbool(!sign(p)); // this makes a lbool object whose value is sign(p)
     vardata[var(p)].reason = from;
     trail.push_(p);
-    is_propagated.push(0);
+    is_propagated.push_(0);
 }
 
 void Solver::cancelUntilTrailRecord()
@@ -346,8 +346,9 @@ void Solver::cancelUntilTrailRecord()
 
     }
     qhead = trailRecord;
+    uint64_t target_size = trail.size() - trailRecord;
     trail.shrink(trail.size() - trailRecord);
-    is_propagated.shrink(trail.size() - trailRecord);
+    is_propagated.shrink(target_size);
 
 }
 
@@ -1096,12 +1097,11 @@ void Solver::cancelUntil(int bLevel) {
         for (int c = trail.size()-1; c >= trail_lim[bLevel]; c--)
         {
             Var      x  = var(trail[c]);
+            is_propagated[c] = 0;
 
 			if (level(x) <= bLevel)
 			{
 				add_tmp.push(trail[c]);
-                is_propagated[c] = 0;
-
 			}
 			else
 			{
@@ -1145,13 +1145,14 @@ void Solver::cancelUntil(int bLevel) {
         }
 
         lqhead_shifted = true;
+        uint64_t target_size = trail.size() - trail_lim[bLevel];
         trail.shrink(trail.size() - trail_lim[bLevel]);
-        is_propagated.shrink(trail.size() - trail_lim[bLevel]);
+        is_propagated.shrink(target_size);
         trail_lim.shrink(trail_lim.size() - bLevel);
         for (int nLitId = add_tmp.size() - 1; nLitId >= 0; --nLitId)
 		{
 			trail.push_(add_tmp[nLitId]);
-            is_propagated.push(0);
+            is_propagated.push_(0);
 
 		}
 		
@@ -1561,8 +1562,9 @@ void Solver::uncheckedEnqueue(Lit p, int level, CRef from)
 
     assigns[x] = lbool(!sign(p));
     vardata[x] = mkVarData(from, level);
+    assert(trail.size() == is_propagated.size());
     trail.push_(p);
-    is_propagated.push(0);
+    is_propagated.push_(0);
 
 }
 
@@ -1710,11 +1712,14 @@ void Solver::print_trail(){
         return;
     terminal = &tout;
     terminal->magenta();
+    int decision_level = 0;
     for(int it = 0; it < trail.size(); it++){
         int item = sign(trail[it])?var(trail[it]):-var(trail[it]);
-        if (is_propagated[it] == 1){terminal->green(); fprintf( stdout, "%d ", item);}
-        if (is_propagated[it] == -1){terminal->red(); fprintf( stdout, "%d ", item);}
-        if (is_propagated[it] == 0){terminal->yellow(); fprintf( stdout, "%d ", item);}
+        bool is_decision = (trail_lim[decision_level] == it);
+        if(is_decision) decision_level++;
+        if (is_propagated[it] == 1){terminal->green(is_decision); fprintf( stdout, "%d ", item);}
+        if (is_propagated[it] == -1){terminal->red(is_decision); fprintf( stdout, "%d ", item);}
+        if (is_propagated[it] == 0){terminal->yellow(is_decision); fprintf( stdout, "%d ", item);}
         if (qhead-1 == it) {terminal->magenta(); fputs("| ", stdout);}
         if (lqhead-1 == it) {terminal->blue(true); fputs("| ", stdout);}
     }
@@ -1918,6 +1923,7 @@ NextClause:;
     //     }
 
 ExitProp:;
+    print_trail();
     propagations += num_props;
     simpDB_props -= num_props;
 
