@@ -354,6 +354,8 @@ protected:
     bool random_polarity;
     bool do_lazy_prop;
     int confl_to_bt;            // Do not backtrack until these many conflicts are faced
+    bool do_skip_bt;
+    bool force_bt;
     int conflicts_since_backtrack;
     bool add_drup_info;
     const char* clause_source;
@@ -412,6 +414,7 @@ protected:
     void     reset_propagation_cutoff();
     bool     elements_remaining_to_propagate();
     bool     should_backtrack();            // reached number of ideal conflicts to backtrack
+    void     backtrack(int decision_level, int highest_level);            // reached number of ideal conflicts to backtrack
 
 
     // Misc:
@@ -636,14 +639,48 @@ inline void     Solver::toDimacs     (const char* file, Lit p, Lit q){ vec<Lit> 
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q, Lit r){ vec<Lit> as; as.push(p); as.push(q); as.push(r); toDimacs(file, as); }
 
 inline bool     Solver::should_backtrack () {
-    if(conflicts_since_backtrack < confl_to_bt - 1){
-        conflicts_since_backtrack++;
-        return false;
-    }
-    else {
+    if(force_bt == true){
+        force_bt = false;
         conflicts_since_backtrack = 0;
         return true;
     }
+
+    if(conflicts_since_backtrack < confl_to_bt - 1){
+        conflicts_since_backtrack++;
+        if(verbosity > 1)
+            printf("c skip backtracking %d times in a row\n",
+                   conflicts_since_backtrack);
+        return false;
+    }
+    else {
+        if(verbosity > 1)
+            printf("c backtracking after %d conflicts\n",
+                conflicts_since_backtrack);
+        conflicts_since_backtrack = 0;
+        return true;
+    }
+}
+
+inline void     Solver::backtrack (int backtrack_level, int highest_level) {
+    if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
+        {
+            ++chrono_backtrack;
+            CBT = true;
+            cancelUntil(highest_level -1);
+            if(qhead ==lqhead)
+                reset_propagation_cutoff();
+        }
+        else // default behavior
+        {
+            ++non_chrono_backtrack;
+            CBT = false;
+            if(verbosity > 1)
+                printf("c backtrack to level %d\n", backtrack_level);
+            cancelUntil(backtrack_level);
+            if(qhead ==lqhead)
+                reset_propagation_cutoff();
+        }
+
 }
 
 //=================================================================================================

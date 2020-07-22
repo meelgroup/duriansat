@@ -169,6 +169,8 @@ Solver::Solver() :
   , random_polarity    (opt_random_pol)
   , do_lazy_prop       (opt_lazy_prop)
   , confl_to_bt        (opt_confl_to_bt)
+  , do_skip_bt         (opt_confl_to_bt > 1)
+  , force_bt           (false)
   , conflicts_since_backtrack (0)
   , add_drup_info      (opt_drat_info)
   , clause_source      ("")
@@ -1747,12 +1749,10 @@ bool Solver::elements_remaining_to_propagate(){
         return true;
     } else {
         qhead = 0;
-        if(verbosity > 0) printf("c calling check propagate\n");
+        if(verbosity > 1) printf("c calling check propagate\n");
         CRef confl = propagate();
-//         last_propagate_type = 3;
         if(verbosity > 1) printf("c finishing check propagate\n");
         if (confl != CRef_Undef){
-//             qhead = old_qhead;
             return true;
         }
         else
@@ -2284,26 +2284,14 @@ lbool Solver::search(int& nof_conflicts)
                 collectFirstUIP(confl);
 
             analyze(confl, learnt_clause, backtrack_level, lbd);
+
+            if(verbosity > 1 &&  force_bt)
+                printf("c this is a forced bt\n");
+
+            int do_backtrack = should_backtrack();
             // check chrono backtrack condition
-            if(should_backtrack()){
-                if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
-                {
-                    ++chrono_backtrack;
-                    CBT = true;
-                    cancelUntil(data.nHighestLevel -1);
-                    if(qhead ==lqhead)
-                        reset_propagation_cutoff();
-                }
-                else // default behavior
-                {
-                    ++non_chrono_backtrack;
-                    CBT = false;
-                    if(verbosity > 1)
-                        printf("c backtrack to level %d\n", backtrack_level);
-                    cancelUntil(backtrack_level);
-                    if(qhead ==lqhead)
-                        reset_propagation_cutoff();
-                }
+            if(do_backtrack){
+                backtrack(backtrack_level,data.nHighestLevel);
             }
 
             lbd--;
@@ -2314,7 +2302,8 @@ lbool Solver::search(int& nof_conflicts)
                 global_lbd_sum += (lbd > 50 ? 50 : lbd); }
 
             if (learnt_clause.size() == 1){
-                uncheckedEnqueue(learnt_clause[0]);
+                if(do_backtrack)
+                    uncheckedEnqueue(learnt_clause[0]);
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
                 ca[cr].set_lbd(lbd);
@@ -2346,7 +2335,8 @@ lbool Solver::search(int& nof_conflicts)
                     claBumpActivity(ca[cr]); }
                 attachClause(cr);
 
-                uncheckedEnqueue(learnt_clause[0], backtrack_level, cr);
+                if(do_backtrack)
+                    uncheckedEnqueue(learnt_clause[0], backtrack_level, cr);
 #ifdef PRINT_OUT
                 std::cout << "new " << ca[cr] << "\n";
                 std::cout << "ci " << learnt_clause[0] << " l " << backtrack_level << "\n";
@@ -2437,14 +2427,27 @@ lbool Solver::search(int& nof_conflicts)
                 if (next == lit_Undef){
                     // Model found:
                     print_trail();
+                    if(!do_lazy_prop && !do_skip_bt)
+                        return l_True;
+
                     if (!elements_remaining_to_propagate()){
                         return l_True;
                     }
                     else{
-                        lower_propagation_cutoff();
-                        if (!(qhead < trail.size()))
-                            propagate_needed = true;
-                        goto startsearch;
+                        if(do_lazy_prop){
+                            lower_propagation_cutoff();
+                            if (!(qhead < trail.size()))
+                                propagate_needed = true;
+                            goto startsearch;
+                        }
+                        if(do_skip_bt){
+                            force_bt = true;
+                            qhead = 0;
+                            if(verbosity > 1)
+                                printf("c jumping to start of search\n");
+                            goto startsearch;
+
+                        }
                     }
                 }
             }
