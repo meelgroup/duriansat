@@ -134,6 +134,8 @@ Solver::Solver() :
   , chrono_backtrack(0), non_chrono_backtrack(0)
   , decisions_cbt(0), decisions_ncbt(0)
   , CBT(false)
+  , skippable_propagate(0)
+  , helpful_bt_skips   (0)
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
@@ -1751,6 +1753,7 @@ bool Solver::elements_remaining_to_propagate(){
         qhead = 0;
         if(verbosity > 1) printf("c calling check propagate\n");
         CRef confl = propagate();
+        skippable_propagate++;
         if(verbosity > 1) printf("c finishing check propagate\n");
         if (confl != CRef_Undef){
             return true;

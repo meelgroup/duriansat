@@ -240,6 +240,9 @@ public:
 #endif
 
     Terminal * terminal;
+
+    uint64_t skippable_propagate;
+    uint64_t helpful_bt_skips;
 protected:
 
     // Helper structures:
@@ -647,6 +650,7 @@ inline bool     Solver::should_backtrack () {
 
     if(conflicts_since_backtrack < confl_to_bt - 1){
         conflicts_since_backtrack++;
+        helpful_bt_skips++;
         if(verbosity > 1)
             printf("c skip backtracking %d times in a row\n",
                    conflicts_since_backtrack);
