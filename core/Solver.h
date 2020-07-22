@@ -353,6 +353,8 @@ protected:
 
     bool random_polarity;
     bool do_lazy_prop;
+    int confl_to_bt;            // Do not backtrack until these many conflicts are faced
+    int conflicts_since_backtrack;
     bool add_drup_info;
     const char* clause_source;
     bool propagate_needed;
@@ -408,7 +410,8 @@ protected:
     bool     up_for_propagation(Lit l);
     void     lower_propagation_cutoff();
     void     reset_propagation_cutoff();
-    bool    elements_remaining_to_propagate();
+    bool     elements_remaining_to_propagate();
+    bool     should_backtrack();            // reached number of ideal conflicts to backtrack
 
 
     // Misc:
@@ -631,6 +634,17 @@ inline void     Solver::toDimacs     (const char* file){ vec<Lit> as; toDimacs(f
 inline void     Solver::toDimacs     (const char* file, Lit p){ vec<Lit> as; as.push(p); toDimacs(file, as); }
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q){ vec<Lit> as; as.push(p); as.push(q); toDimacs(file, as); }
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q, Lit r){ vec<Lit> as; as.push(p); as.push(q); as.push(r); toDimacs(file, as); }
+
+inline bool     Solver::should_backtrack () {
+    if(conflicts_since_backtrack < confl_to_bt - 1){
+        conflicts_since_backtrack++;
+        return false;
+    }
+    else {
+        conflicts_since_backtrack = 0;
+        return true;
+    }
+}
 
 //=================================================================================================
 // Debug etc:

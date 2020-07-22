@@ -80,6 +80,7 @@ static IntOption     opt_VSIDS_props_limit ("DUP-LEARNTS", "VSIDS-lim",  "specif
 
 static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarity selection", false);
 static BoolOption    opt_lazy_prop      (_cat, "lazy-prop",    "Be Lazy in propagating", false);
+static IntOption     opt_confl_to_bt    (_cat, "confl-to-bt", "Backtrack after these many conflicts", 1, IntRange(1, INT32_MAX));
 static BoolOption    opt_drat_info      (_cat, "drat-info",    "Add execess information in DRUP", false);
 
 //VSIDS_props_limit
@@ -167,6 +168,8 @@ Solver::Solver() :
   // Option to add random polarity
   , random_polarity    (opt_random_pol)
   , do_lazy_prop       (opt_lazy_prop)
+  , confl_to_bt        (opt_confl_to_bt)
+  , conflicts_since_backtrack (0)
   , add_drup_info      (opt_drat_info)
   , clause_source      ("")
 
@@ -2282,24 +2285,26 @@ lbool Solver::search(int& nof_conflicts)
 
             analyze(confl, learnt_clause, backtrack_level, lbd);
             // check chrono backtrack condition
-            if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
-            {
-				++chrono_backtrack;
-                CBT = true;
-				cancelUntil(data.nHighestLevel -1);
-                if(qhead ==lqhead)
-                    reset_propagation_cutoff();
+            if(should_backtrack()){
+                if ((confl_to_chrono < 0 || confl_to_chrono <= conflicts) && chrono > -1 && (decisionLevel() - backtrack_level) >= chrono)
+                {
+                    ++chrono_backtrack;
+                    CBT = true;
+                    cancelUntil(data.nHighestLevel -1);
+                    if(qhead ==lqhead)
+                        reset_propagation_cutoff();
+                }
+                else // default behavior
+                {
+                    ++non_chrono_backtrack;
+                    CBT = false;
+                    if(verbosity > 1)
+                        printf("c backtrack to level %d\n", backtrack_level);
+                    cancelUntil(backtrack_level);
+                    if(qhead ==lqhead)
+                        reset_propagation_cutoff();
+                }
             }
-			else // default behavior
-			{
-				++non_chrono_backtrack;
-                CBT = false;
-                if(verbosity > 1)
-                    printf("c backtrack to level %d\n", backtrack_level);
-				cancelUntil(backtrack_level);
-                if(qhead ==lqhead)
-                    reset_propagation_cutoff();
-			}
 
             lbd--;
             if (VSIDS){
