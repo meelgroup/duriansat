@@ -174,6 +174,7 @@ Solver::Solver() :
   , do_skip_bt         (opt_confl_to_bt > 1)
   , force_bt           (false)
   , conflicts_since_backtrack (0)
+  , is_first_skip      (true)
   , add_drup_info      (opt_drat_info)
   , clause_source      ("")
 
@@ -1737,6 +1738,7 @@ void Solver::print_trail(){
         if (is_propagated[it] == 1){terminal->green(is_decision); fprintf( stdout, "%d ", item);}
         if (is_propagated[it] == -1){terminal->red(is_decision); fprintf( stdout, "%d ", item);}
         if (is_propagated[it] == 0){terminal->yellow(is_decision); fprintf( stdout, "%d ", item);}
+        fprintf( stdout, "(%d) ", level(var(trail[it])));
         if (qhead-1 == it) {terminal->magenta(); fputs("| ", stdout);}
         if (lqhead-1 == it) {terminal->blue(true); fputs("| ", stdout);}
     }
@@ -2078,8 +2080,10 @@ bool Solver::simplify()
 // pathCs[k] is the number of variables assigned at level k,
 // it is initialized to 0 at the begining and reset to 0 after the function execution
 bool Solver::collectFirstUIP(CRef confl){
+    assert(confl!=CRef_Undef);
     involved_lits.clear();
     int max_level=1;
+    printf("%d\n", confl);
     Clause& c=ca[confl];
     int minLevel=decisionLevel();
     for(int i=0; i<c.size(); i++) {
@@ -2291,10 +2295,16 @@ lbool Solver::search(int& nof_conflicts)
             if(verbosity > 1 &&  force_bt)
                 printf("c this is a forced bt\n");
 
-            int do_backtrack = should_backtrack();
+            int do_backtrack = should_backtrack(backtrack_level);
             // check chrono backtrack condition
             if(do_backtrack){
+                if(confl_to_bt > 1)
+                    backtrack_level = first_backtrack_level;
                 backtrack(backtrack_level,data.nHighestLevel);
+                is_first_skip = true;
+            } else if (is_first_skip){
+                first_backtrack_level = backtrack_level;
+                is_first_skip = false;
             }
 
             lbd--;
