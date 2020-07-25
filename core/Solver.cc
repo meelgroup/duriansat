@@ -2216,6 +2216,10 @@ lbool Solver::search(int& nof_conflicts)
     int         backtrack_level;
     int         lbd;
     vec<Lit>    learnt_clause;
+    Lit         saved_literal;
+    int         saved_learnt_size;
+    CRef        first_learnt;
+    bool        cref_to_save = false;
     bool        cached = false;
     starts++;
 
@@ -2304,6 +2308,8 @@ lbool Solver::search(int& nof_conflicts)
                 is_first_skip = true;
             } else if (is_first_skip){
                 first_backtrack_level = backtrack_level;
+                saved_learnt_size = learnt_clause.size();
+                cref_to_save = true;
                 is_first_skip = false;
             }
 
@@ -2314,11 +2320,16 @@ lbool Solver::search(int& nof_conflicts)
                 lbd_queue.push(lbd);
                 global_lbd_sum += (lbd > 50 ? 50 : lbd); }
 
-            if (learnt_clause.size() == 1){
+            if (saved_learnt_size == 1){
                 if(do_backtrack)
-                    uncheckedEnqueue(learnt_clause[0]);
+                    uncheckedEnqueue(saved_literal);
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
+                if(cref_to_save){
+                    first_learnt = cr;
+                    cref_to_save = false;
+                }
+
                 ca[cr].set_lbd(lbd);
                 //duplicate learnts 
                 int  id = 0;
@@ -2349,7 +2360,7 @@ lbool Solver::search(int& nof_conflicts)
                 attachClause(cr);
 
                 if(do_backtrack)
-                    uncheckedEnqueue(learnt_clause[0], backtrack_level, cr);
+                    uncheckedEnqueue(saved_literal, backtrack_level, first_learnt);
 #ifdef PRINT_OUT
                 std::cout << "new " << ca[cr] << "\n";
                 std::cout << "ci " << learnt_clause[0] << " l " << backtrack_level << "\n";
