@@ -360,6 +360,8 @@ protected:
     bool do_skip_bt;
     bool force_bt;
     int conflicts_since_backtrack;
+    bool is_first_skip;
+    int first_backtrack_level;
     bool add_drup_info;
     const char* clause_source;
     bool propagate_needed;
@@ -416,7 +418,7 @@ protected:
     void     lower_propagation_cutoff();
     void     reset_propagation_cutoff();
     bool     elements_remaining_to_propagate();
-    bool     should_backtrack();            // reached number of ideal conflicts to backtrack
+    bool     should_backtrack(int backtrack_level);            // reached number of ideal conflicts to backtrack
     void     backtrack(int decision_level, int highest_level);            // reached number of ideal conflicts to backtrack
 
 
@@ -641,10 +643,11 @@ inline void     Solver::toDimacs     (const char* file, Lit p){ vec<Lit> as; as.
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q){ vec<Lit> as; as.push(p); as.push(q); toDimacs(file, as); }
 inline void     Solver::toDimacs     (const char* file, Lit p, Lit q, Lit r){ vec<Lit> as; as.push(p); as.push(q); as.push(r); toDimacs(file, as); }
 
-inline bool     Solver::should_backtrack () {
+inline bool     Solver::should_backtrack (int backtrack_level) {
     if(force_bt == true){
         force_bt = false;
         conflicts_since_backtrack = 0;
+        first_backtrack_level = backtrack_level;
         return true;
     }
 
@@ -652,14 +655,16 @@ inline bool     Solver::should_backtrack () {
         conflicts_since_backtrack++;
         helpful_bt_skips++;
         if(verbosity > 1)
-            printf("c skip backtracking %d times in a row\n",
-                   conflicts_since_backtrack);
+            printf("c skip backtracking %d times in a row (level = %d) \n",
+                   conflicts_since_backtrack, backtrack_level);
         return false;
     }
     else {
         if(verbosity > 1)
-            printf("c backtracking after %d conflicts\n",
-                conflicts_since_backtrack);
+            printf("c backtracking after %d conflicts to level %d (this conflict level %d)\n",
+                conflicts_since_backtrack
+                , first_backtrack_level
+                , backtrack_level);
         conflicts_since_backtrack = 0;
         return true;
     }
