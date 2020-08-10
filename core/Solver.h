@@ -33,7 +33,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #define Minisat_Solver_h
 
 #define ANTI_EXPLORATION
-#define BIN_DRUP
+// #define BIN_DRUP
 
 #define GLUCOSE23
 //#define INT_QUEUE_AVG
@@ -49,7 +49,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Alg.h"
 #include "utils/Options.h"
 #include "core/SolverTypes.h"
-
+#include "utils/terminal.h"
 
 // duplicate learnts version
 #include <chrono>
@@ -169,6 +169,10 @@ public:
     void    checkGarbage(double gf);
     void    checkGarbage();
 
+    // Colorful Printing
+
+    void print_trail();
+
     // Extra results: (read-only member variable)
     //
     vec<lbool> model;             // If problem is satisfiable, this vector contains the model (if any).
@@ -235,6 +239,7 @@ public:
     vec<uint32_t> canceled;
 #endif
 
+    Terminal * terminal;
 protected:
 
     // Helper structures:
@@ -293,8 +298,12 @@ protected:
     vec<char>           decision;         // Declares if a variable is eligible for selection in the decision heuristic.
     vec<Lit>            trail;            // Assignment stack; stores all assigments made in the order they were made.
     vec<int>            trail_lim;        // Separator indices for different decision levels in 'trail'.
+    vec<int>            is_propagated;    // of size equal to trail; 0 -> no item ; 1 -> propagated
+                                          // -1  -> skipped_proapgation
     vec<VarData>        vardata;          // Stores reason and level for each variable.
-    int                 qhead;            // Head of queue (as index into the trail -- no more explicit propagation queue in MiniSat).
+    int                 qhead, lqhead;    // Head of queue (as index into the trail -- no more explicit propagation queue in MiniSat).
+    bool                lqhead_shifted;
+    int                 phead;            // Head of queue till the point it has definitely been propagated
     int                 simpDB_assigns;   // Number of top-level assignments since last execution of 'simplify()'.
     int64_t             simpDB_props;     // Remaining number of propagations that must be made before next execution of 'simplify()'.
     vec<Lit>            assumptions;      // Current set of assumptions provided to solve by the user.
@@ -343,6 +352,10 @@ protected:
     bool                asynch_interrupt;
 
     bool random_polarity;
+    bool do_lazy_prop;
+    bool add_drup_info;
+    const char* clause_source;
+    bool propagate_needed;
 
     // Main internal methods:
     //
@@ -385,6 +398,18 @@ protected:
 // duplicate learnts version
     int     is_duplicate     (std::vector<uint32_t>&c); //returns TRUE if a clause is duplicate
 // duplicate learnts version
+
+
+    // Lazy propagation methods
+    //
+    double propagation_cutoff;
+
+    CRef     lazy_propagate        ();               // Perform unit propagation. For selected variables
+    bool     up_for_propagation(Lit l);
+    void     lower_propagation_cutoff();
+    void     reset_propagation_cutoff();
+    bool    elements_remaining_to_propagate();
+
 
     // Misc:
     //

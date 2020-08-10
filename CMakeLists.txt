@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 
-project(maplesat)
+project(duriansat)
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+    message(STATUS "Ok, CCache found!")
+endif(CCACHE_FOUND)
 
 #--------------------------------------------------------------------------------------------------
 # Configurable options:
@@ -38,12 +46,29 @@ add_cxx_flag_if_supported("-Wparentheses")
 add_cxx_flag_if_supported("-Wunreachable-code")
 add_cxx_flag_if_supported("-ggdb3")
 
+add_compile_options( -O3)
+
+
+# -----------------------------------------------------------------------------
+# Add GIT version
+
+find_program (GIT_EXECUTABLE git)
+if (GIT_EXECUTABLE)
+  include(GetGitRevisionDescription)
+  get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+  MESSAGE(STATUS "GIT hash found: ${GIT_SHA1}")
+  add_definitions( -DVERSION="${GIT_SHA1}" )
+else()
+  set(GIT_SHA "GIT-hash-notfound")
+endif()
+
+
 #--------------------------------------------------------------------------------------------------
 # Dependencies:
 
 find_package(ZLIB)
 include_directories(${ZLIB_INCLUDE_DIR})
-include_directories(${maplesat_SOURCE_DIR})
+include_directories(${duriansat_SOURCE_DIR})
 
 #--------------------------------------------------------------------------------------------------
 # Compile flags:
@@ -53,68 +78,47 @@ add_definitions(-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS)
 #--------------------------------------------------------------------------------------------------
 # Build Targets:
 
-set(MAPLESAT_LIB_SOURCES
+set(DURIANSAT_LIB_SOURCES
     utils/Options.cc
     utils/System.cc
+    utils/terminal.cc
     core/Solver.cc
     simp/SimpSolver.cc)
 
 set(CMAKE_CXX_FLAGS "-O3")
 
-# Get the current working branch
-execute_process(
-  COMMAND git rev-parse --abbrev-ref HEAD
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_BRANCH
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
 
-# Get the latest abbreviated commit hash of the working branch
-execute_process(
-  COMMAND git log -1 --format=%h
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_COMMIT_HASH
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+add_library(duriansat-lib-static STATIC ${DURIANSAT_LIB_SOURCES})
+add_library(duriansat-lib-shared SHARED ${DURIANSAT_LIB_SOURCES})
 
+target_link_libraries(duriansat-lib-shared ${ZLIB_LIBRARY})
+target_link_libraries(duriansat-lib-static ${ZLIB_LIBRARY})
 
-set(VERSION "${GIT_COMMIT_HASH}")
-
-
-add_library(maplesat-lib-static STATIC ${MAPLESAT_LIB_SOURCES})
-add_library(maplesat-lib-shared SHARED ${MAPLESAT_LIB_SOURCES})
-
-target_link_libraries(maplesat-lib-shared ${ZLIB_LIBRARY})
-target_link_libraries(maplesat-lib-static ${ZLIB_LIBRARY})
-
-add_executable(maplesat_core core/Main.cc)
-add_executable(maplesat_simp simp/Main.cc)
+add_executable(duriansat_simp simp/Main.cc)
 
 if(STATIC_BINARIES)
-  target_link_libraries(maplesat_core maplesat-lib-static)
-  target_link_libraries(maplesat_simp maplesat-lib-static)
+  target_link_libraries(duriansat_simp duriansat-lib-static -static)
 else()
-  target_link_libraries(maplesat_core maplesat-lib-shared)
-  target_link_libraries(maplesat_simp mapleat-lib-shared)
+  target_link_libraries(duriansat_simp duriansat-lib-shared)
 endif()
 
-set_target_properties(maplesat-lib-static PROPERTIES OUTPUT_NAME "maplesat")
-set_target_properties(maplesat-lib-shared
+set_target_properties(duriansat-lib-static PROPERTIES OUTPUT_NAME "duriansat")
+set_target_properties(duriansat-lib-shared
   PROPERTIES
-    OUTPUT_NAME "maplesat"
-    VERSION ${MAPLESAT_VERSION}
-    SOVERSION ${MAPLESAT_SOVERSION})
+    OUTPUT_NAME "duriansat"
+    VERSION ${DURIANSAT_VERSION}
+    SOVERSION ${DURIANSAT_SOVERSION})
 
-set_target_properties(maplesat_simp       PROPERTIES OUTPUT_NAME "maplesat")
+set_target_properties(duriansat_simp       PROPERTIES OUTPUT_NAME "duriansat")
 
 #--------------------------------------------------------------------------------------------------
 # Installation targets:
 
-install(TARGETS maplesat-lib-static maplesat-lib-shared maplesat_core maplesat_simp
+install(TARGETS duriansat-lib-static duriansat-lib-shared duriansat_simp
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 
 install(DIRECTORY mtl utils core simp
-        DESTINATION include/maplesat
+        DESTINATION include/duriansat
         FILES_MATCHING PATTERN "*.h")
