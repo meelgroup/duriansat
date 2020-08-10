@@ -2441,6 +2441,9 @@ lbool Solver::search(int& nof_conflicts)
 
                 if (next == lit_Undef){
                     // Model found:
+                    if (!do_lazy_prop){
+                        return l_True;
+                    }
                     print_trail();
                     if (!elements_remaining_to_propagate()){
                         return l_True;
