@@ -413,6 +413,20 @@ protected:
         return lbd;
     }
 
+    template<class V> int computeMoment(const V& c) {
+        int moment = 0;
+
+        counter++;
+        for (int i = 0; i < c.size(); i++){
+            int l = level(var(c[i]));
+            if (l != 0 && seen2[l] != counter){
+                seen2[l] = counter;
+                moment++; } }
+
+        return moment;
+    }
+
+
 #ifdef BIN_DRUP
     static int buf_len;
     static unsigned char drup_buf[];

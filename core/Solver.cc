@@ -1274,7 +1274,8 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
 
         // Update LBD if improved.
         if (c.learnt() && c.mark() != CORE){
-            int lbd = computeLBD(c);
+            // int lbd = computeLBD(c);
+            int lbd = computeMoment(c);
             if (lbd < c.lbd()){
                 if (c.lbd() <= 30) c.removable(false); // Protect once from reduction.
                 c.set_lbd(lbd);
@@ -1358,10 +1359,12 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
     out_learnt.shrink(i - j);
     tot_literals += out_learnt.size();
 
-    out_lbd = computeLBD(out_learnt);
+    // out_lbd = computeLBD(out_learnt);
+    out_lbd = computeMoment(out_learnt);
     if (out_lbd <= 6 && out_learnt.size() <= 30) // Try further minimization?
         if (binResMinimize(out_learnt))
-            out_lbd = computeLBD(out_learnt); // Recompute LBD if minimized.
+            out_lbd = computeMoment(out_learnt); // Recompute LBD if minimized.
+            // out_lbd = computeLBD(out_learnt); // Recompute LBD if minimized.
 
     // Find correct backtrack level:
     //
