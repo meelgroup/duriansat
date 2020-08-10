@@ -206,7 +206,7 @@ public:
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
     int       which_moment;
-
+    bool      sum_moments;
 
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
@@ -463,7 +463,14 @@ protected:
         }
 
         for(int i = 0; i < level_cnts.size(); i++){
-            moment += pow(level_cnts[i],which_moment);
+            if(!sum_moments){
+                moment += pow(level_cnts[i],which_moment);
+            } else {
+                for(int j = 0; j <= which_moment; j++){
+                    moment += pow(level_cnts[i],j);
+                }
+                moment /= (which_moment+1);
+            }
         }
 
 

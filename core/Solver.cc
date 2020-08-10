@@ -83,6 +83,7 @@ static BoolOption    opt_lazy_prop      (_cat, "lazy-prop",    "Be Lazy in propa
 static BoolOption    opt_drat_info      (_cat, "drat-info",    "Add execess information in DRUP", false);
 
 static IntOption     opt_moment (_cat, "moment",  "specifies which moment to use.", 0, IntRange(0, INT32_MAX));
+static BoolOption    opt_sum_moments      (_cat, "sum-moments",    "Calculate moment as F_0 + F_1 + ... + F_k", false);
 
 
 //VSIDS_props_limit
@@ -130,6 +131,7 @@ Solver::Solver() :
   , learntsize_adjust_inc         (1.5)
 
   , which_moment(opt_moment)
+  , sum_moments (opt_sum_moments)
 
   // Statistics: (formerly in 'SolverStats')
   //
