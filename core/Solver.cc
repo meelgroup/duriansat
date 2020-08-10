@@ -82,6 +82,9 @@ static BoolOption    opt_random_pol      (_cat, "rnd-pol",    "Randomize polarit
 static BoolOption    opt_lazy_prop      (_cat, "lazy-prop",    "Be Lazy in propagating", false);
 static BoolOption    opt_drat_info      (_cat, "drat-info",    "Add execess information in DRUP", false);
 
+static IntOption     opt_moment (_cat, "moment",  "specifies which moment to use.", 0, IntRange(0, INT32_MAX));
+
+
 //VSIDS_props_limit
 
 //=================================================================================================
@@ -126,6 +129,8 @@ Solver::Solver() :
   , learntsize_adjust_start_confl (100)
   , learntsize_adjust_inc         (1.5)
 
+  , which_moment(opt_moment)
+
   // Statistics: (formerly in 'SolverStats')
   //
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0), conflicts_VSIDS(0)
@@ -157,6 +162,7 @@ Solver::Solver() :
   , chrono			   (opt_chrono)
   
   , counter            (0)
+  , counter_m          (0)
 
   // Resource constraints:
   //
@@ -962,6 +968,7 @@ Var Solver::newVar(bool sign, bool dvar)
 
     seen     .push(0);
     seen2    .push(0);
+    level_pos.push(0);
     polarity .push(sign);
     decision .push();
     trail    .capacity(v+1);

@@ -205,6 +205,7 @@ public:
 
     int       learntsize_adjust_start_confl;
     double    learntsize_adjust_inc;
+    int       which_moment;
 
 
     // duplicate learnts version
@@ -339,7 +340,9 @@ protected:
     vec<Lit>            add_oc;
 
     vec<uint64_t>       seen2;    // Mostly for efficient LBD computation. 'seen2[i]' will indicate if decision level or variable 'i' has been seen.
+    vec<uint64_t>       level_pos;
     uint64_t            counter;  // Simple counter for marking purpose with 'seen2'.
+    uint64_t            counter_m;  // Simple counter for marking purpose with 'seen2'.
 
     double              max_learnts;
     double              learntsize_adjust_confl;
@@ -440,13 +443,29 @@ protected:
 
     template<class V> int computeMoment(const V& c) {
         int moment = 0;
+        int level_this = 0;
+        vec<int> level_cnts;
 
-        counter++;
+        // Need a dictionary
+        counter_m++;
         for (int i = 0; i < c.size(); i++){
             int l = level(var(c[i]));
-            if (l != 0 && seen2[l] != counter){
-                seen2[l] = counter;
-                moment++; } }
+            if (l != 0 && seen2[l] != counter_m){
+                seen2[l] = counter_m;
+                level_cnts.push(1);
+                level_pos[l] = level_this++;
+            } else if (l != 0) {
+                uint64_t level_at = level_pos[l];
+                assert(level_at < level_cnts.size());
+                level_cnts[level_at]++;
+                assert(level_cnts[level_at] <= c.size());
+            }
+        }
+
+        for(int i = 0; i < level_cnts.size(); i++){
+            moment += pow(level_cnts[i],which_moment);
+        }
+
 
         return moment;
     }
