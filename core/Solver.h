@@ -339,7 +339,7 @@ protected:
     vec<Lit>            add_tmp;
     vec<Lit>            add_oc;
 
-    vec<uint64_t>       seen2;    // Mostly for efficient LBD computation. 'seen2[i]' will indicate if decision level or variable 'i' has been seen.
+    vec<uint64_t>       seen2, seen3;    // Mostly for efficient LBD computation. 'seen2[i]' will indicate if decision level or variable 'i' has been seen.
     vec<uint64_t>       level_pos;
     uint64_t            counter;  // Simple counter for marking purpose with 'seen2'.
     uint64_t            counter_m;  // Simple counter for marking purpose with 'seen2'.
@@ -442,7 +442,7 @@ protected:
     }
 
     template<class V> int computeMoment(const V& c) {
-        int moment = 0;
+        int moment = 0, lbd = 0;
         int level_this = 0;
         vec<int> level_cnts;
 
@@ -450,8 +450,9 @@ protected:
         counter_m++;
         for (int i = 0; i < c.size(); i++){
             int l = level(var(c[i]));
-            if (l != 0 && seen2[l] != counter_m){
-                seen2[l] = counter_m;
+            if (l != 0 && seen3[l] != counter_m){
+                seen3[l] = counter_m;
+                lbd++;
                 level_cnts.push(1);
                 level_pos[l] = level_this++;
             } else if (l != 0) {
@@ -472,7 +473,9 @@ protected:
                 moment /= (which_moment+1);
             }
         }
+        assert((which_moment != 0) || (moment == lbd) );
 
+        printf("c lbd = %d  moment = %d\n", lbd, moment);
 
         return moment;
     }

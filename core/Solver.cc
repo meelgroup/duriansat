@@ -970,6 +970,7 @@ Var Solver::newVar(bool sign, bool dvar)
 
     seen     .push(0);
     seen2    .push(0);
+    seen3    .push(0);
     level_pos.push(0);
     polarity .push(sign);
     decision .push();
