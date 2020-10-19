@@ -455,27 +455,27 @@ protected:
                 lbd++;
                 level_cnts.push(1);
                 level_pos[l] = level_this++;
+                moment += 1;
             } else if (l != 0) {
                 uint64_t level_at = level_pos[l];
                 assert(level_at < level_cnts.size());
                 level_cnts[level_at]++;
+                if (which_moment == 0)
+                    moment = lbd;
+                if (which_moment == 1)
+                    moment += 1;
+                if (which_moment == 2)
+                    moment += (2*level_cnts[level_at] - 1);
+                if (which_moment == 3)
+                    moment +=
+                    (3*level_cnts[level_at]*level_cnts[level_at] - 3*level_cnts[level_at] + 1);
+
                 assert(level_cnts[level_at] <= c.size());
             }
         }
 
-        for(int i = 0; i < level_cnts.size(); i++){
-            if(!sum_moments){
-                moment += pow(level_cnts[i],which_moment);
-            } else {
-                for(int j = 0; j <= which_moment; j++){
-                    moment += pow(level_cnts[i],j);
-                }
-                moment /= (which_moment+1);
-            }
-        }
-        assert((which_moment != 0) || (moment == lbd) );
 
-        printf("c lbd = %d  moment = %d\n", lbd, moment);
+        assert((which_moment != 0) || (moment == lbd) );
 
         return moment;
     }
