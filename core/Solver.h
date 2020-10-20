@@ -470,7 +470,7 @@ protected:
                 level_cnts[level_at]++;
                 if (which_moment == 0)
                     moment = lbd;
-                if (which_moment == 1)
+                if (which_moment == 1 || which_moment == 4)
                     moment += 1;
                 if (which_moment == 2)
                     moment += (2*level_cnts[level_at] - 1);
@@ -482,11 +482,12 @@ protected:
             }
         }
 
-
         if (which_moment == 2)
             moment = sqrt(moment);
         if (which_moment == 3)
             moment = std::cbrt(moment);
+        if (which_moment == 4)
+            moment += lbd;
 
         moment_avg += (moment - moment_avg)/num_moments_cnt;
 
