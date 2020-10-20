@@ -59,6 +59,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <set>
 #include <map>
 #include <algorithm>
+#include <cmath>
+
 // duplicate learnts version
 
 
@@ -441,10 +443,15 @@ protected:
         return lbd;
     }
 
+    uint64_t num_moments_cnt = 0;
+    float lbd_avg = 0, moment_avg = 0;
+
     template<class V> int computeMoment(const V& c) {
         int moment = 0, lbd = 0;
         int level_this = 0;
         vec<int> level_cnts;
+
+        num_moments_cnt++;
 
         // Need a dictionary
         counter_m++;
@@ -456,6 +463,7 @@ protected:
                 level_cnts.push(1);
                 level_pos[l] = level_this++;
                 moment += 1;
+                lbd_avg += (lbd - lbd_avg)/num_moments_cnt;
             } else if (l != 0) {
                 uint64_t level_at = level_pos[l];
                 assert(level_at < level_cnts.size());
@@ -475,6 +483,16 @@ protected:
         }
 
 
+        if (which_moment == 2)
+            moment = sqrt(moment);
+        if (which_moment == 3)
+            moment = std::cbrt(moment);
+
+        moment_avg += (moment - moment_avg)/num_moments_cnt;
+
+        moment *= lbd_avg/moment_avg;
+
+        assert(moment > 0);
         assert((which_moment != 0) || (moment == lbd) );
 
         return moment;
