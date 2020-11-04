@@ -495,9 +495,9 @@ protected:
         moment *= lbd_avg/moment_avg;
 
         assert(moment > 0);
-        printf ("moment : %d (%.2f) lbd : %d (%.2f) clause size : %d \n ", moment, moment_avg, lbd, lbd_avg,c.size() );
+        // printf ("moment : %d (%.2f) lbd : %d (%.2f) clause size : %d \n ", (int)moment, moment_avg, lbd, lbd_avg, c.size() );
 
-        return moment;
+        return (int)moment;
     }
 
 

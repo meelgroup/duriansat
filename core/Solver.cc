@@ -1419,10 +1419,10 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& ou
     // out_lbd = computeLBD(out_learnt);
     out_lbd = computeMoment(out_learnt);
     if (out_lbd <= 6 && out_learnt.size() <= 30) // Try further minimization?
-        if (binResMinimize(out_learnt))
+        if (binResMinimize(out_learnt)){
             out_lbd = computeMoment(out_learnt); // Recompute LBD if minimized.
             // out_lbd = computeLBD(out_learnt); // Recompute LBD if minimized.
-
+        }
     // Find correct backtrack level:
     //
     if (out_learnt.size() == 1)
