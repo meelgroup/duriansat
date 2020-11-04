@@ -483,9 +483,8 @@ protected:
         }
 
         moment = lam0*lbd
-                 + lam1 * moment1
-                 + lam2 * moment2
-                 + lam3 * moment3;
+                 + lam2 * moment2 / (moment1 * moment1)
+                 + lam3 * moment3 / (moment1 * moment1 * moment1);
 
         moment /= (lam0 + lam1 + lam2 + lam3);
 
