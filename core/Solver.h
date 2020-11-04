@@ -210,6 +210,8 @@ public:
     int       which_moment;
     bool      sum_moments;
 
+    double    lam0, lam1, lam2, lam3;
+
     // duplicate learnts version
     uint64_t       VSIDS_props_limit;
     uint32_t       min_number_of_learnts_copies;    
@@ -447,7 +449,9 @@ protected:
     float lbd_avg = 0, moment_avg = 0;
 
     template<class V> int computeMoment(const V& c) {
-        int moment = 0, lbd = 0;
+        double moment = 0;
+        int lbd = 0;
+        int moment1 = 0, moment2 = 0, moment3 = 0;
         int level_this = 0;
         vec<int> level_cnts;
 
@@ -462,39 +466,36 @@ protected:
                 lbd++;
                 level_cnts.push(1);
                 level_pos[l] = level_this++;
-                moment += 1;
-                lbd_avg += (lbd - lbd_avg)/num_moments_cnt;
-            } else if (l != 0) {
+            }
+
+            if (l != 0) {
                 uint64_t level_at = level_pos[l];
                 assert(level_at < level_cnts.size());
                 level_cnts[level_at]++;
-                if (which_moment == 0)
-                    moment = lbd;
-                if (which_moment == 1 || which_moment == 4)
-                    moment += 1;
-                if (which_moment == 2)
-                    moment += (2*level_cnts[level_at] - 1);
-                if (which_moment == 3)
-                    moment +=
+
+                moment1 += 1;
+                moment2 += (2*level_cnts[level_at] - 1);
+                moment3 +=
                     (3*level_cnts[level_at]*level_cnts[level_at] - 3*level_cnts[level_at] + 1);
 
-                assert(level_cnts[level_at] <= c.size());
+                assert(level_cnts[level_at] <= c.size()+1);
             }
         }
 
-        if (which_moment == 2)
-            moment = sqrt(moment);
-        if (which_moment == 3)
-            moment = std::cbrt(moment);
-        if (which_moment == 4)
-            moment += lbd;
+        moment = lam0*lbd
+                 + lam1 * moment1
+                 + lam2 * moment2
+                 + lam3 * moment3;
 
+        moment /= (lam0 + lam1 + lam2 + lam3);
+
+        lbd_avg += (lbd - lbd_avg)/num_moments_cnt;
         moment_avg += (moment - moment_avg)/num_moments_cnt;
 
         moment *= lbd_avg/moment_avg;
 
         assert(moment > 0);
-        assert((which_moment != 0) || (moment == lbd) );
+        printf ("moment : %d (%.2f) lbd : %d (%.2f) clause size : %d \n ", moment, moment_avg, lbd, lbd_avg,c.size() );
 
         return moment;
     }

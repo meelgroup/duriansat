@@ -85,6 +85,11 @@ static BoolOption    opt_drat_info      (_cat, "drat-info",    "Add execess info
 static IntOption     opt_moment (_cat, "moment",  "specifies which moment to use.", 0, IntRange(0, INT32_MAX));
 static BoolOption    opt_sum_moments      (_cat, "sum-moments",    "Calculate moment as F_0 + F_1 + ... + F_k", false);
 
+static DoubleOption  opt_lam0       (_cat, "lam0",        "Lambda Zero", 1, DoubleRange(-100, false, HUGE_VAL, false));
+static DoubleOption  opt_lam1       (_cat, "lam1",        "Lambda One", 0, DoubleRange(-100, false, HUGE_VAL, false));
+static DoubleOption  opt_lam2       (_cat, "lam2",        "Lambda Two", 0, DoubleRange(-100, false, HUGE_VAL, false));
+static DoubleOption  opt_lam3       (_cat, "lam3",        "Lambda Three", 0, DoubleRange(-100, false, HUGE_VAL, false));
+
 
 //VSIDS_props_limit
 
@@ -192,6 +197,11 @@ Solver::Solver() :
   , var_iLevel_inc     (1)
   , order_heap_distance(VarOrderLt(activity_distance))
   , propagation_cutoff (1)
+
+  , lam0 (opt_lam0)
+  , lam1 (opt_lam1)
+  , lam2 (opt_lam2)
+  , lam3 (opt_lam3)
 {}
 
 
